@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'create_account_screen.dart';
 import 'forgot_password_screen.dart';
+import '/src/screens/core_app/main_scaffold.dart';
 
 class SignInScreen extends StatelessWidget {
   const SignInScreen({super.key});
@@ -68,7 +69,7 @@ class SignInScreen extends StatelessWidget {
                   // TODO: Replace with your real home screen (e.g. HomeScreen)
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
-                      builder: (context) => const PlaceholderScreen(),
+                      builder: (context) => const MainScaffold(),
                     ),
                     (Route<dynamic> route) => false,
                   );
