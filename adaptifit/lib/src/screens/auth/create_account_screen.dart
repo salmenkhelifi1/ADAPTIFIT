@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'sign_in_screen.dart';
+import '/src/screens/onboarding/onboarding_goals_screen.dart'; // Import the sign-in screen for navigation
 
 class CreateAccountScreen extends StatelessWidget {
   const CreateAccountScreen({super.key});
@@ -41,7 +42,13 @@ class CreateAccountScreen extends StatelessWidget {
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () {
-                  // TODO: Handle sign up flow
+                  // TODO: Replace with your real home screen (e.g. HomeScreen)
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const OnboardingGoalsScreen(),
+                    ),
+                    (Route<dynamic> route) => false,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,

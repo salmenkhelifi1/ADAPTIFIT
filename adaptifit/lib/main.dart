@@ -8,7 +8,6 @@ import 'package:adaptifit/src/screens/auth/create_account_screen.dart';
 import 'package:adaptifit/src/screens/auth/sign_in_screen.dart';
 import 'package:adaptifit/src/screens/core_app/chat_screen.dart';
 import 'package:adaptifit/src/screens/core_app/settings_screen.dart';
-import 'package:adaptifit/src/screens/home/home_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -45,7 +44,6 @@ class MyApp extends StatelessWidget {
         '/welcome': (context) => const WelcomeScreen(),
         '/create-account': (context) => const CreateAccountScreen(),
         '/signin': (context) => const SignInScreen(),
-        '/home': (context) => const HomeScreen(),
         '/chat': (context) => const ChatScreen(),
         '/settings': (context) => const SettingsScreen(),
       },
