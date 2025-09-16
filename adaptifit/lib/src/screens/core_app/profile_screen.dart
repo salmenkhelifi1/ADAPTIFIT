@@ -1,8 +1,22 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '/src/screens/auth/sign_in_screen.dart'; // Import the sign-in screen for logout navigation
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  // Get the current user from Firebase Auth
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
+
+  // Sign out the user
+  Future<void> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    // AuthGate will handle navigation
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,15 +35,16 @@ class ProfileScreen extends StatelessWidget {
             fontSize: 24,
           ),
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
-              backgroundColor: Color(0xFF1EB955),
+              backgroundColor: const Color(0xFF1EB955),
               radius: 20,
+              // Display the first letter of the email if available
               child: Text(
-                'A',
-                style: TextStyle(
+                _currentUser?.email?.substring(0, 1).toUpperCase() ?? '?',
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
@@ -73,24 +88,25 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileHeader() {
-    return const Row(
+    return Row(
       children: [
         CircleAvatar(
           radius: 30,
-          backgroundColor: Color(0xFF1EB955),
+          backgroundColor: const Color(0xFF1EB955),
           child: Text(
-            'A',
-            style: TextStyle(
+            _currentUser?.email?.substring(0, 1).toUpperCase() ?? '?',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
-        SizedBox(width: 16),
-        Column(
+        const SizedBox(width: 16),
+        const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Note: DisplayName is not available by default with email/password auth
             Text(
               'Alex Johnson',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -109,12 +125,14 @@ class ProfileScreen extends StatelessWidget {
   Widget _buildAccountInfoCard() {
     return _buildInfoCard(
       title: 'Account Information',
-      child: const ListTile(
-        leading: Icon(Icons.email_outlined, color: Colors.grey),
-        title: Text('Email'),
+      child: ListTile(
+        leading: const Icon(Icons.email_outlined, color: Colors.grey),
+        title: const Text('Email'),
         subtitle: Text(
-          'alex.johnson@email.com',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          // Display the current user's email
+          _currentUser?.email ?? 'No email available',
+          style:
+              const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -237,13 +255,8 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildLogoutButton(BuildContext context) {
     return TextButton(
-      onPressed: () {
-        // This will clear the navigation stack and go to the SignInScreen
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const SignInScreen()),
-          (Route<dynamic> route) => false,
-        );
-      },
+      // Call the _signOut method when pressed
+      onPressed: _signOut,
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

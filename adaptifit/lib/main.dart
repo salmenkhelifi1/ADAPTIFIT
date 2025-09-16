@@ -1,15 +1,24 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/constants/app_strings.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
+import 'package:adaptifit/src/screens/auth/auth_gate.dart';
+import 'firebase_options.dart';
 
 // Screens
-import 'package:adaptifit/src/screens/auth/welcome_screen.dart';
-import 'package:adaptifit/src/screens/auth/create_account_screen.dart';
-import 'package:adaptifit/src/screens/auth/sign_in_screen.dart';
-import 'package:adaptifit/src/screens/core_app/chat_screen.dart';
-import 'package:adaptifit/src/screens/core_app/settings_screen.dart';
+import 'src/screens/auth/welcome_screen.dart';
+import 'src/screens/auth/create_account_screen.dart';
+import 'src/screens/auth/sign_in_screen.dart';
+import 'src/screens/core_app/main_scaffold.dart';
+import 'src/screens/core_app/settings_screen.dart';
+import 'src/screens/core_app/chat_screen.dart';
 
-void main() {
+Future<void> main() async {
+  // This ensures Firebase is initialized before the app starts
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -26,6 +35,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.lightMintBackground,
         fontFamily: 'Poppins',
         useMaterial3: true,
+        // This can remain const because the values are constant
         textTheme: const TextTheme(
           displayLarge: TextStyle(
               fontSize: 32,
@@ -39,13 +49,15 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(fontSize: 14, color: AppColors.grey),
         ),
       ),
-      initialRoute: '/welcome',
+      // AuthGate will now decide whether to show the WelcomeScreen or the MainScaffold
+      home: const AuthGate(),
       routes: {
         '/welcome': (context) => const WelcomeScreen(),
         '/create-account': (context) => const CreateAccountScreen(),
         '/signin': (context) => const SignInScreen(),
-        '/chat': (context) => const ChatScreen(),
+        '/main': (context) => const MainScaffold(),
         '/settings': (context) => const SettingsScreen(),
+        '/chat': (context) => const ChatScreen(),
       },
     );
   }

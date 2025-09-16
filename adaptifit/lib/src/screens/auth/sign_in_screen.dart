@@ -1,10 +1,73 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'create_account_screen.dart';
 import 'forgot_password_screen.dart';
 import '/src/screens/core_app/main_scaffold.dart';
 
-class SignInScreen extends StatelessWidget {
+class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
+
+  @override
+  State<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  // Controllers to manage the text in the TextFields
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signIn() async {
+    // Show a loading indicator
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Use the controllers to get the email and password
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // We check if the widget is still mounted before touching the context.
+      if (!mounted) return;
+
+      // Pop all routes until we get back to the root, which is managed by AuthGate.
+      // This dismisses the sign-in screen and reveals the MainScaffold.
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } on FirebaseAuthException catch (e) {
+      // Handle different authentication errors
+      String message = 'An error occurred. Please check your credentials.';
+      if (e.code == 'user-not-found' || e.code == 'invalid-email') {
+        message = 'No user found for that email.';
+      } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        message = 'Wrong password provided for that user.';
+      }
+
+      // Show an error message to the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      // Hide the loading indicator
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +105,13 @@ class SignInScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 30),
-              _buildTextField(hintText: 'Email'),
+              // Pass the controllers to the text fields
+              _buildTextField(controller: _emailController, hintText: 'Email'),
               const SizedBox(height: 16),
-              _buildTextField(hintText: 'Password', obscureText: true),
+              _buildTextField(
+                  controller: _passwordController,
+                  hintText: 'Password',
+                  obscureText: true),
               const SizedBox(height: 24),
               GestureDetector(
                 onTap: () {
@@ -65,15 +132,7 @@ class SignInScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: () {
-                  // TODO: Replace with your real home screen (e.g. HomeScreen)
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (context) => const MainScaffold(),
-                    ),
-                    (Route<dynamic> route) => false,
-                  );
-                },
+                onPressed: _isLoading ? null : _signIn,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: primaryGreen,
@@ -82,10 +141,15 @@ class SignInScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: const Text(
-                  'Sign In',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
+                      )
+                    : const Text(
+                        'Sign In',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
               ),
               const Spacer(flex: 3),
               GestureDetector(
@@ -122,9 +186,15 @@ class SignInScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField({required String hintText, bool obscureText = false}) {
+  Widget _buildTextField(
+      {required TextEditingController controller,
+      required String hintText,
+      bool obscureText = false}) {
     return TextField(
+      controller: controller,
       obscureText: obscureText,
+      keyboardType:
+          obscureText ? TextInputType.text : TextInputType.emailAddress,
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
@@ -136,22 +206,6 @@ class SignInScreen extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(
           vertical: 16,
           horizontal: 20,
-        ),
-      ),
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  const PlaceholderScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text(
-          'Home screen placeholder. Replace with MainScaffold or HomeScreen.',
-          textAlign: TextAlign.center,
         ),
       ),
     );

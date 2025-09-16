@@ -40,6 +40,7 @@ class PasswordResetConfirmationScreen extends StatelessWidget {
               const SizedBox(height: 50),
               ElevatedButton(
                 onPressed: () {
+                  // Navigate back to the sign-in screen, clearing all previous routes
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (context) => const SignInScreen(),

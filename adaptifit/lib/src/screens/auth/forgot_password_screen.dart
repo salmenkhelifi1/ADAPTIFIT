@@ -1,9 +1,72 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/screens/auth/password_reset_confirmation_screen.dart';
 
-class ForgotPasswordScreen extends StatelessWidget {
+class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
+
+  @override
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final _emailController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendResetLink() async {
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your email address.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _emailController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const PasswordResetConfirmationScreen(),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message = 'An error occurred. Please try again.';
+      if (e.code == 'user-not-found' || e.code == 'invalid-email') {
+        message = 'No user found for that email.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,17 +106,10 @@ class ForgotPasswordScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              _buildTextField(hintText: 'Email'),
+              _buildTextField(controller: _emailController, hintText: 'Email'),
               const SizedBox(height: 40),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          const PasswordResetConfirmationScreen(),
-                    ),
-                  );
-                },
+                onPressed: _isLoading ? null : _sendResetLink,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.white,
                   foregroundColor: AppColors.primaryGreen,
@@ -62,10 +118,16 @@ class ForgotPasswordScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: const Text(
-                  'Send Reset Link',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryGreen),
+                      )
+                    : const Text(
+                        'Send Reset Link',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
               ),
               const Spacer(flex: 3),
             ],
@@ -75,8 +137,10 @@ class ForgotPasswordScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField({required String hintText}) {
+  Widget _buildTextField(
+      {required TextEditingController controller, required String hintText}) {
     return TextField(
+      controller: controller,
       keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
         hintText: hintText,
