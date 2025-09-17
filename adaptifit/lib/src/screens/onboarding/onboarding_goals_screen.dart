@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
+import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/onboarding/onboarding_experience_screen.dart';
 
 class OnboardingGoalsScreen extends StatefulWidget {
@@ -19,12 +21,22 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
     'Other',
   ];
 
-  // Changed to a list to support multiple selections as per the design
   final List<String> _selectedGoals = [];
 
   @override
+  void initState() {
+    super.initState();
+    // Pre-fill selections if the user has already answered this question.
+    final provider = Provider.of<OnboardingProvider>(context, listen: false);
+    final existingGoals = provider.answers['fitnessGoals'];
+    if (existingGoals != null && existingGoals is List) {
+      // Ensure the list is of the correct type and add items.
+      _selectedGoals.addAll(List<String>.from(existingGoals));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Button is enabled if at least one goal is selected
     final isButtonEnabled = _selectedGoals.isNotEmpty;
 
     return Scaffold(
@@ -127,7 +139,6 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primaryGreen,
             foregroundColor: AppColors.white,
-            // Corrected the syntax from grey[300] to grey.shade300
             disabledBackgroundColor: AppColors.grey.shade300,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
@@ -144,17 +155,19 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
   }
 
   Widget _buildGoalOption(String goal) {
-    // Check if the current goal is in the list of selected goals
+    final onboardingProvider =
+        Provider.of<OnboardingProvider>(context, listen: false);
     final isSelected = _selectedGoals.contains(goal);
     return GestureDetector(
       onTap: () {
         setState(() {
-          // Add or remove the goal from the list on tap
           if (isSelected) {
             _selectedGoals.remove(goal);
           } else {
             _selectedGoals.add(goal);
           }
+          // Update the provider with the latest list of selected goals
+          onboardingProvider.updateAnswer('fitnessGoals', _selectedGoals);
         });
       },
       child: Container(

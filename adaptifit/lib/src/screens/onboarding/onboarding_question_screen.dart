@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:adaptifit/src/constants/app_colors.dart';
+import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/core_app/main_scaffold.dart';
+import '/src/services/auth_service.dart';
+import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/services/n8n_service.dart';
 
 enum QuestionType {
   singleChoice,
@@ -13,6 +20,7 @@ class OnboardingQuestion {
   final String title;
   final String subtitle;
   final QuestionType type;
+  final String answerKey; // Unique key for storing the answer
   final List<String> options;
   final List<String> placeholders;
 
@@ -20,6 +28,7 @@ class OnboardingQuestion {
     required this.title,
     required this.subtitle,
     required this.type,
+    required this.answerKey,
     this.options = const [],
     this.placeholders = const [],
   });
@@ -34,12 +43,22 @@ class OnboardingQuestionScreen extends StatefulWidget {
 }
 
 class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
+  // Services
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
+  final N8nService _n8nService = N8nService();
+
+  // State
+  int _currentQuestionIndex = 0;
+  bool _isLoading = false;
+
   final List<OnboardingQuestion> _questions = [
     OnboardingQuestion(
       title: 'How many days per week can you realistically work out?',
       subtitle:
           'Be honest with yourself—consistency matters more than perfection. We’ll design your plan around your schedule.',
       type: QuestionType.singleChoice,
+      answerKey: 'workoutFrequency',
       options: ['1', '2', '3', '4', '5', '6', '7'],
     ),
     OnboardingQuestion(
@@ -47,6 +66,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       subtitle:
           'Most people choose 30, 60, or 90 days — but you can set any timeline that fits your goals.',
       type: QuestionType.textInput,
+      answerKey: 'planDuration',
       placeholders: ['Enter number of days'],
     ),
     OnboardingQuestion(
@@ -54,6 +74,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       subtitle:
           'This helps us adapt your plan so you can train safely and effectively.',
       type: QuestionType.textArea,
+      answerKey: 'injuries',
       placeholders: [
         'e.g., shoulder impingement, knee pain, lower back issues',
       ],
@@ -63,6 +84,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       subtitle:
           'This helps us personalize your plan around your lifestyle. Add your diet style, macros, or calories if you’d like. If you skip, we’ll create only your workout plan and hide nutrition sections in the app.',
       type: QuestionType.diet,
+      answerKey: 'diet',
       placeholders: [
         'e.g., high protein, vegetarian, keto, plant-based',
         '2000 kcal or macros in grams',
@@ -70,9 +92,6 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       ],
     ),
   ];
-
-  int _currentQuestionIndex = 0;
-  final Map<int, dynamic> _answers = {};
 
   late TextEditingController _textController;
   late TextEditingController _dietStyleController;
@@ -86,6 +105,9 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     _dietStyleController = TextEditingController();
     _dietMacrosController = TextEditingController();
     _dietCustomController = TextEditingController();
+
+    // Load initial answer for the first question
+    _loadAnswerForCurrentQuestion();
   }
 
   @override
@@ -97,21 +119,42 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     super.dispose();
   }
 
-  void _goToNextScreen() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const MainScaffold()),
-      (Route<dynamic> route) => false,
-    );
+  void _finishOnboarding() async {
+    setState(() => _isLoading = true);
+
+    final onboardingProvider =
+        Provider.of<OnboardingProvider>(context, listen: false);
+    final User? user = _authService.getCurrentUser();
+
+    if (user != null) {
+      final answers = onboardingProvider.answers;
+      await _firestoreService.updateOnboardingAnswers(
+          uid: user.uid, answers: answers);
+      await _n8nService.triggerPlanGeneration(
+          userId: user.uid, onboardingAnswers: answers);
+
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainScaffold()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } else {
+      // Handle error: user somehow not logged in
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: Could not find logged in user.')),
+      );
+    }
   }
 
   void _nextQuestion() {
-    _saveCurrentAnswer();
     setState(() {
       if (_currentQuestionIndex < _questions.length - 1) {
         _currentQuestionIndex++;
         _loadAnswerForCurrentQuestion();
       } else {
-        _goToNextScreen();
+        _finishOnboarding();
       }
     });
   }
@@ -119,7 +162,6 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   void _previousQuestion() {
     if (_currentQuestionIndex > 0) {
       setState(() {
-        _saveCurrentAnswer();
         _currentQuestionIndex--;
         _loadAnswerForCurrentQuestion();
       });
@@ -128,28 +170,19 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     }
   }
 
-  void _saveCurrentAnswer() {
-    final question = _questions[_currentQuestionIndex];
-    switch (question.type) {
-      case QuestionType.singleChoice:
-        break;
-      case QuestionType.textInput:
-      case QuestionType.textArea:
-        _answers[_currentQuestionIndex] = _textController.text;
-        break;
-      case QuestionType.diet:
-        _answers[_currentQuestionIndex] = {
-          'style': _dietStyleController.text,
-          'macros': _dietMacrosController.text,
-          'custom': _dietCustomController.text,
-        };
-        break;
-    }
+  void _updateProviderAnswer(String key, dynamic value) {
+    Provider.of<OnboardingProvider>(context, listen: false)
+        .updateAnswer(key, value);
+    // Trigger a rebuild to update button state
+    setState(() {});
   }
 
   void _loadAnswerForCurrentQuestion() {
-    final answer = _answers[_currentQuestionIndex];
+    final provider = Provider.of<OnboardingProvider>(context, listen: false);
     final question = _questions[_currentQuestionIndex];
+    final answer = provider.answers[question.answerKey];
+
+    // Clear all controllers first
     _textController.clear();
     _dietStyleController.clear();
     _dietMacrosController.clear();
@@ -159,6 +192,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
 
     switch (question.type) {
       case QuestionType.singleChoice:
+        // The UI state is handled directly by reading from the provider
         break;
       case QuestionType.textInput:
       case QuestionType.textArea:
@@ -177,19 +211,24 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   @override
   Widget build(BuildContext context) {
     final currentQuestion = _questions[_currentQuestionIndex];
+    final provider = Provider.of<OnboardingProvider>(context);
 
     bool isNextEnabled() {
-      final answer = _answers[_currentQuestionIndex];
+      final answer = provider.answers[currentQuestion.answerKey];
+      if (answer == null) return false;
+
       switch (currentQuestion.type) {
         case QuestionType.singleChoice:
-          return answer != null;
+          return answer.toString().isNotEmpty;
         case QuestionType.textInput:
         case QuestionType.textArea:
-          return _textController.text.isNotEmpty;
+          return answer.toString().isNotEmpty;
         case QuestionType.diet:
-          return _dietStyleController.text.isNotEmpty ||
-              _dietMacrosController.text.isNotEmpty ||
-              _dietCustomController.text.isNotEmpty;
+          return (answer['style']?.isNotEmpty ?? false) ||
+              (answer['macros']?.isNotEmpty ?? false) ||
+              (answer['custom']?.isNotEmpty ?? false);
+        default:
+          return false;
       }
     }
 
@@ -237,7 +276,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: ElevatedButton(
-                onPressed: isNextEnabled() ? _nextQuestion : null,
+                onPressed:
+                    isNextEnabled() && !_isLoading ? _nextQuestion : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
                   disabledBackgroundColor: AppColors.grey.shade400,
@@ -246,16 +286,18 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: Text(
-                  _currentQuestionIndex == _questions.length - 1
-                      ? 'Done'
-                      : 'Next',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.white,
-                  ),
-                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        _currentQuestionIndex == _questions.length - 1
+                            ? 'Generate My Plan'
+                            : 'Next',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.white,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -267,25 +309,27 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   Widget _buildInputArea(OnboardingQuestion question) {
     switch (question.type) {
       case QuestionType.singleChoice:
-        return _buildSingleChoiceList(question.options);
+        return _buildSingleChoiceList(question);
       case QuestionType.textInput:
-        return _buildTextInput(question.placeholders.first, _textController);
+        return _buildTextInput(question, _textController);
       case QuestionType.textArea:
-        return _buildTextArea(question.placeholders.first, _textController);
+        return _buildTextArea(question, _textController);
       case QuestionType.diet:
-        return _buildDietForm(question.placeholders);
+        return _buildDietForm(question);
     }
   }
 
-  Widget _buildSingleChoiceList(List<String> options) {
+  Widget _buildSingleChoiceList(OnboardingQuestion question) {
+    final provider = Provider.of<OnboardingProvider>(context);
+    final selectedOption = provider.answers[question.answerKey];
+
     return Column(
-      children: options.map((option) {
-        final isSelected = _answers[_currentQuestionIndex] == option;
+      children: question.options.map((option) {
+        final isSelected = selectedOption == option;
         return Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
           child: GestureDetector(
-            onTap: () =>
-                setState(() => _answers[_currentQuestionIndex] = option),
+            onTap: () => _updateProviderAnswer(question.answerKey, option),
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
@@ -317,12 +361,13 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     );
   }
 
-  Widget _buildTextInput(String placeholder, TextEditingController controller) {
+  Widget _buildTextInput(
+      OnboardingQuestion question, TextEditingController controller) {
     return TextField(
       controller: controller,
-      onChanged: (text) => setState(() {}),
+      onChanged: (text) => _updateProviderAnswer(question.answerKey, text),
       decoration: InputDecoration(
-        hintText: placeholder,
+        hintText: question.placeholders.first,
         filled: true,
         fillColor: AppColors.white,
         border: OutlineInputBorder(
@@ -343,13 +388,14 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     );
   }
 
-  Widget _buildTextArea(String placeholder, TextEditingController controller) {
+  Widget _buildTextArea(
+      OnboardingQuestion question, TextEditingController controller) {
     return TextField(
       controller: controller,
-      onChanged: (text) => setState(() {}),
+      onChanged: (text) => _updateProviderAnswer(question.answerKey, text),
       maxLines: 4,
       decoration: InputDecoration(
-        hintText: placeholder,
+        hintText: question.placeholders.first,
         filled: true,
         fillColor: AppColors.white,
         border: OutlineInputBorder(
@@ -370,34 +416,69 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     );
   }
 
-  Widget _buildDietForm(List<String> placeholders) {
+  Widget _buildDietForm(OnboardingQuestion question) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTextInput(placeholders[0], _dietStyleController),
-        const SizedBox(height: 16),
-        _buildTextInput(placeholders[1], _dietMacrosController),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            'Set daily macros or calories (optional)',
-            style: TextStyle(color: Colors.black54),
+        TextField(
+          controller: _dietStyleController,
+          onChanged: (text) => _updateProviderAnswer(question.answerKey, {
+            'style': text,
+            'macros': _dietMacrosController.text,
+            'custom': _dietCustomController.text,
+          }),
+          decoration: InputDecoration(
+            hintText: question.placeholders[0],
+            filled: true,
+            fillColor: AppColors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
-        _buildTextInput(placeholders[2], _dietCustomController),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(
-            'Other (please specify)',
-            style: TextStyle(color: Colors.black54),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _dietMacrosController,
+          onChanged: (text) => _updateProviderAnswer(question.answerKey, {
+            'style': _dietStyleController.text,
+            'macros': text,
+            'custom': _dietCustomController.text,
+          }),
+          decoration: InputDecoration(
+            hintText: question.placeholders[1],
+            filled: true,
+            fillColor: AppColors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _dietCustomController,
+          onChanged: (text) => _updateProviderAnswer(question.answerKey, {
+            'style': _dietStyleController.text,
+            'macros': _dietMacrosController.text,
+            'custom': text,
+          }),
+          decoration: InputDecoration(
+            hintText: question.placeholders[2],
+            filled: true,
+            fillColor: AppColors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
         const SizedBox(height: 20),
         Center(
           child: TextButton(
             onPressed: () {
-              _answers[_currentQuestionIndex] = {'skipped': true};
-              _goToNextScreen();
+              _updateProviderAnswer(question.answerKey, {'skipped': true});
+              _finishOnboarding();
             },
             child: const Text(
               'Skip Nutrition',

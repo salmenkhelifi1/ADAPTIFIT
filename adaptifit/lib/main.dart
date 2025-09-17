@@ -1,8 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:adaptifit/src/constants/app_strings.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
+import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'firebase_options.dart';
 
 // Screens
@@ -19,7 +21,13 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  runApp(
+    // Wrap your entire app with the ChangeNotifierProvider
+    ChangeNotifierProvider(
+      create: (context) => OnboardingProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -35,7 +43,6 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.lightMintBackground,
         fontFamily: 'Poppins',
         useMaterial3: true,
-        // This can remain const because the values are constant
         textTheme: const TextTheme(
           displayLarge: TextStyle(
               fontSize: 32,
@@ -49,8 +56,9 @@ class MyApp extends StatelessWidget {
           bodyMedium: TextStyle(fontSize: 14, color: AppColors.grey),
         ),
       ),
-      // AuthGate will now decide whether to show the WelcomeScreen or the MainScaffold
+      // AuthGate remains the entry point
       home: const AuthGate(),
+      // Your routes are correct
       routes: {
         '/welcome': (context) => const WelcomeScreen(),
         '/create-account': (context) => const CreateAccountScreen(),

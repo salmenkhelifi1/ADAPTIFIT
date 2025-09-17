@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
+import '/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/onboarding/onboarding_question_screen.dart';
 
 class OnboardingExperienceScreen extends StatefulWidget {
@@ -18,6 +20,16 @@ class _OnboardingExperienceScreenState
     'Intermediate',
     'Advanced',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill the selection if the user has already answered this question.
+    // This is useful if they navigate back and forth.
+    _selectedExperience =
+        Provider.of<OnboardingProvider>(context, listen: false)
+            .answers['experienceLevel'];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +74,10 @@ class _OnboardingExperienceScreenState
                           onTap: () {
                             setState(() {
                               _selectedExperience = level;
+                              // Save the user's choice to the provider
+                              Provider.of<OnboardingProvider>(context,
+                                      listen: false)
+                                  .updateAnswer('experienceLevel', level);
                             });
                           },
                           child: Container(
