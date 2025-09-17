@@ -11,14 +11,14 @@ class FirestoreService {
     required String uid,
     required String email,
     required String firstName,
-    required Map<String, dynamic> onboardingAnswers,
   }) async {
     await _db.collection('users').doc(uid).set({
       'email': email,
       'firstName': firstName,
       'createdAt': Timestamp.now(),
-      'onboardingAnswers': onboardingAnswers,
-      'activePlanId': null, // No active plan initially
+      'onboardingAnswers': {}, // Starts empty
+      'onboardingCompleted': false, // Add this flag
+      'activePlanId': null,
       'progress': {
         'currentStreak': 0,
         'longestStreak': 0,
@@ -28,13 +28,15 @@ class FirestoreService {
     });
   }
 
-  /// (NEW METHOD) Updates an existing user's document with their onboarding answers.
+  /// Updates an existing user's document with their onboarding answers.
   Future<void> updateOnboardingAnswers({
     required String uid,
     required Map<String, dynamic> answers,
   }) async {
     await _db.collection('users').doc(uid).update({
       'onboardingAnswers': answers,
+      'onboardingCompleted':
+          true, // Set the flag to true when answers are saved
     });
   }
 
@@ -62,7 +64,7 @@ class FirestoreService {
     return await _db.collection('plans').doc(planId).get();
   }
 
-  /// (NEW METHOD) Retrieves a user's document from the 'users' collection
+  /// Retrieves a user's document from the 'users' collection
   Future<DocumentSnapshot> getUser(String uid) async {
     return await _db.collection('users').doc(uid).get();
   }
