@@ -1,8 +1,87 @@
 import 'package:flutter/material.dart';
-import '/src/constants/app_colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
-class CoachScreen extends StatelessWidget {
+import '/src/constants/app_colors.dart';
+import '/src/core/models/chat_message.dart';
+import '/src/services/n8n_service.dart';
+
+class CoachScreen extends StatefulWidget {
   const CoachScreen({super.key});
+
+  @override
+  State<CoachScreen> createState() => _CoachScreenState();
+}
+
+class _CoachScreenState extends State<CoachScreen> {
+  final TextEditingController _textController = TextEditingController();
+  final N8nService _n8nService = N8nService();
+  final List<ChatMessage> _messages = [];
+  bool _isLoading = false;
+  String? _userName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserNameAndWelcome();
+  }
+
+  void _loadUserNameAndWelcome() {
+    // In a real app, you'd fetch the user's name from Firestore
+    // For now, we'll use a placeholder.
+    _userName = "Alex";
+    setState(() {
+      _messages.add(
+        ChatMessage(
+          text:
+              'I\'m here to help you achieve your fitness goals. Ask me anything about your workouts, nutrition, or progress!',
+          timestamp: DateTime.now(),
+          isUser: false,
+        ),
+      );
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _textController.text;
+    if (text.trim().isEmpty) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return; // Should not happen if user is logged in
+
+    final userMessage = ChatMessage(
+      text: text,
+      timestamp: DateTime.now(),
+      isUser: true,
+    );
+
+    setState(() {
+      _messages.insert(0, userMessage);
+      _isLoading = true;
+    });
+
+    _textController.clear();
+
+    final response = await _n8nService.askAiCoach(
+      userId: user.uid,
+      prompt: text,
+    );
+
+    if (response != null) {
+      final coachMessage = ChatMessage(
+        text: response,
+        timestamp: DateTime.now(),
+        isUser: false,
+      );
+      setState(() {
+        _messages.insert(0, coachMessage);
+      });
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,36 +120,33 @@ class CoachScreen extends StatelessWidget {
       body: Column(
         children: [
           Expanded(
-            child: ListView(
+            child: ListView.builder(
+              reverse: true, // To show newest messages at the bottom
               padding: const EdgeInsets.all(16.0),
-              children: const [
-                WelcomeBubble(
-                  title: 'Hi Alex! 👋',
-                  text:
-                      'I\'m here to help you achieve your fitness goals. Ask me anything about your workouts, nutrition, or progress!',
-                ),
-                SizedBox(height: 16),
-                ChatBubble(
-                  text:
-                      'Hi Alex! 👋 How are you feeling about your workout today?',
-                  time: '2:40 PM',
-                  isUser: false,
-                ),
-                ChatBubble(
-                  text:
-                      'I\'m ready to crush it! Should I do the upper body workout first?',
-                  time: '2:42 PM',
-                  isUser: true,
-                ),
-                ChatBubble(
-                  text:
-                      'Perfect energy! Yes, let\'s start with upper body. Remember to warm up for 5-10 minutes first. I\'ll track your progress and adjust if needed. 💪',
-                  time: '2:43 PM',
-                  isUser: false,
-                ),
-              ],
+              itemCount: _messages.length + 1,
+              itemBuilder: (context, index) {
+                if (index == _messages.length) {
+                  return WelcomeBubble(
+                    title: 'Hi ${_userName ?? 'there'}! 👋',
+                    text: _messages.isNotEmpty
+                        ? _messages.last.text
+                        : 'Loading...',
+                  );
+                }
+                final message = _messages[index];
+                return ChatBubble(
+                  text: message.text,
+                  time: DateFormat('h:mm a').format(message.timestamp),
+                  isUser: message.isUser,
+                );
+              },
             ),
           ),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              child: TypingIndicator(),
+            ),
           _buildMessageInput(context),
         ],
       ),
@@ -86,6 +162,8 @@ class CoachScreen extends StatelessWidget {
           children: [
             Expanded(
               child: TextField(
+                controller: _textController,
+                onSubmitted: (_) => _sendMessage(),
                 decoration: InputDecoration(
                   hintText: 'Ask your coach anything...',
                   filled: true,
@@ -109,7 +187,7 @@ class CoachScreen extends StatelessWidget {
               ),
               child: IconButton(
                 icon: const Icon(Icons.send, color: AppColors.white),
-                onPressed: () {},
+                onPressed: _sendMessage,
               ),
             ),
           ],
@@ -118,6 +196,8 @@ class CoachScreen extends StatelessWidget {
     );
   }
 }
+
+// UI Components from original file, slightly adapted
 
 class WelcomeBubble extends StatelessWidget {
   final String title;
@@ -128,6 +208,7 @@ class WelcomeBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20.0),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: AppColors.lightMint,
         borderRadius: BorderRadius.circular(20.0),
@@ -163,11 +244,12 @@ class ChatBubble extends StatelessWidget {
   final String time;
   final bool isUser;
 
-  const ChatBubble(
-      {super.key,
-      required this.text,
-      required this.time,
-      required this.isUser});
+  const ChatBubble({
+    super.key,
+    required this.text,
+    required this.time,
+    required this.isUser,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -188,8 +270,11 @@ class ChatBubble extends StatelessWidget {
               const CircleAvatar(
                 radius: 16,
                 backgroundColor: AppColors.primaryGreen,
-                child:
-                    Icon(Icons.auto_awesome, color: AppColors.white, size: 16),
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.white,
+                  size: 16,
+                ),
               ),
               const SizedBox(width: 8),
             ],
@@ -211,14 +296,43 @@ class ChatBubble extends StatelessWidget {
         ),
         Padding(
           padding: isUser
-              ? const EdgeInsets.only(right: 8.0)
-              : const EdgeInsets.only(left: 48.0),
+              ? const EdgeInsets.only(right: 8.0, top: 4)
+              : const EdgeInsets.only(left: 48.0, top: 4),
           child: Text(
             time,
             style: const TextStyle(color: Colors.grey, fontSize: 12),
           ),
         ),
         const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
+class TypingIndicator extends StatelessWidget {
+  const TypingIndicator({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const CircleAvatar(
+          radius: 16,
+          backgroundColor: AppColors.primaryGreen,
+          child: Icon(Icons.auto_awesome, color: AppColors.white, size: 16),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Text(
+            'Coach is typing...',
+            style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+          ),
+        ),
       ],
     );
   }

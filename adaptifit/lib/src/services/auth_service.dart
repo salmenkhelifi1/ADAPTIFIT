@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -34,12 +35,12 @@ class AuthService {
           uid: user.uid,
           email: email,
           firstName: firstName,
-          onboardingAnswers: onboardingAnswers, // Pass the answers to Firestore
+          //  onboardingAnswers: onboardingAnswers, // Pass the answers to Firestore
         );
       }
       return user;
     } on FirebaseAuthException catch (e) {
-      print(e.message);
+      debugPrint(e.message);
       return null;
     }
   }
@@ -56,7 +57,7 @@ class AuthService {
       );
       return result.user;
     } on FirebaseAuthException catch (e) {
-      print(e.message);
+      debugPrint(e.message);
       return null;
     }
   }
