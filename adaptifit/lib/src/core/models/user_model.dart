@@ -1,4 +1,4 @@
-import 'package.cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
   final String id;
@@ -13,7 +13,8 @@ class UserModel {
   final String planStartDate;
   final bool skipNutrition;
   final bool onboardingCompleted;
-  final Map<String, int> macros;
+  final Map<String, dynamic> macros;
+  final Map<String, dynamic> onboardingAnswers; // Added missing field
   final String? activePlanId;
   final Timestamp createdAt;
   final Timestamp updatedAt;
@@ -32,14 +33,16 @@ class UserModel {
     required this.skipNutrition,
     required this.onboardingCompleted,
     required this.macros,
+    required this.onboardingAnswers, // Added to constructor
     this.activePlanId,
     required this.createdAt,
     required this.updatedAt,
   });
 
-  factory UserModel.fromMap(String id, Map<String, dynamic> map) {
+  factory UserModel.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> map = doc.data() as Map<String, dynamic>;
     return UserModel(
-      id: id,
+      id: doc.id,
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       age: map['age'] ?? 0,
@@ -51,7 +54,9 @@ class UserModel {
       planStartDate: map['planStartDate'] ?? '',
       skipNutrition: map['skipNutrition'] ?? false,
       onboardingCompleted: map['onboardingCompleted'] ?? false,
-      macros: Map<String, int>.from(map['macros'] ?? {}),
+      macros: Map<String, dynamic>.from(map['macros'] ?? {}),
+      onboardingAnswers:
+          Map<String, dynamic>.from(map['onboardingAnswers'] ?? {}), // Added
       activePlanId: map['activePlanId'],
       createdAt: map['createdAt'] ?? Timestamp.now(),
       updatedAt: map['updatedAt'] ?? Timestamp.now(),
@@ -72,6 +77,7 @@ class UserModel {
       'skipNutrition': skipNutrition,
       'onboardingCompleted': onboardingCompleted,
       'macros': macros,
+      'onboardingAnswers': onboardingAnswers, // Added
       'activePlanId': activePlanId,
       'createdAt': createdAt,
       'updatedAt': updatedAt,

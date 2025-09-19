@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import '/src/core/models/chat_message.dart';
+import 'package:adaptifit/src/core/models/chat_message.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -107,6 +107,11 @@ class FirestoreService {
   Future<DocumentSnapshot> getUser(String uid) {
     debugPrint('Firestore: Getting user document for UID: $uid');
     return _db.collection('users').doc(uid).get();
+  }
+
+  /// Retrieves the calendar data for a user.
+  Future<QuerySnapshot> getCalendarData(String uid) {
+    return _db.collection('users').doc(uid).collection('calendar').get();
   }
 
   // --- CHAT METHODS ---

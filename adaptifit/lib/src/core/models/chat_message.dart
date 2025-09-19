@@ -8,4 +8,12 @@ class ChatMessage {
     required this.timestamp,
     required this.isUser,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'text': text,
+      'timestamp': timestamp,
+      'isUser': isUser,
+    };
+  }
 }

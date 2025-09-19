@@ -1,3 +1,4 @@
+import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'sign_in_screen.dart';
@@ -35,8 +36,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         password: _passwordController.text.trim(),
       );
 
-      // Update the user's profile with their first name
+      // Update the user's profile and create a Firestore document
       if (userCredential.user != null) {
+        // Create the user document in Firestore
+        await FirestoreService().createUserDocument(
+          uid: userCredential.user!.uid,
+          email: _emailController.text.trim(),
+          firstName: _firstNameController.text.trim(),
+        );
+
+        // Update the user's display name in Firebase Auth
         await userCredential.user!
             .updateDisplayName(_firstNameController.text.trim());
       }

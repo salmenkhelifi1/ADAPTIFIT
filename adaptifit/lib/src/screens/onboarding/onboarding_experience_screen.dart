@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
-import '/src/context/onboarding_provider.dart';
+import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/onboarding/onboarding_question_screen.dart';
 
 class OnboardingExperienceScreen extends StatefulWidget {
@@ -33,6 +33,7 @@ class _OnboardingExperienceScreenState
 
   @override
   Widget build(BuildContext context) {
+    print('Building OnboardingExperienceScreen');
     return Scaffold(
       backgroundColor: AppColors.lightMintBackground,
       appBar: AppBar(
