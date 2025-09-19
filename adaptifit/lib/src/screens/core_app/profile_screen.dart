@@ -1,173 +1,273 @@
+import 'package:adaptifit/src/core/models/plan_model.dart';
+import 'package:adaptifit/src/core/models/user_model.dart';
+import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '/src/screens/core_app/calendar_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+class PlanScreen extends StatefulWidget {
+  const PlanScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<PlanScreen> createState() => _PlanScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
-  // Get the current user from Firebase Auth
+class _PlanScreenState extends State<PlanScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
+  Future<PlanModel?>? _planFuture;
 
-  // Sign out the user
-  Future<void> _signOut() async {
-    await FirebaseAuth.instance.signOut();
-    // AuthGate will handle navigation
+  @override
+  void initState() {
+    super.initState();
+    if (_currentUser != null) {
+      _planFuture = _fetchActivePlan();
+    }
+  }
+
+  Future<PlanModel?> _fetchActivePlan() async {
+    final userDoc = await _firestoreService.getUser(_currentUser!.uid);
+    if (!userDoc.exists) return null;
+
+    final user = UserModel.fromFirestore(userDoc);
+    if (user.activePlanId == null) return null;
+
+    final planDoc =
+        await _firestoreService.getPlan(user.uid, user.activePlanId!);
+    if (!planDoc.exists) return null;
+
+    return PlanModel.fromFirestore(planDoc);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(
-        0xFFF0F4F8,
-      ), // Light background color from design
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Profile',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: const Color(0xFF1EB955),
-              radius: 20,
-              // Display the first letter of the email if available
-              child: Text(
-                _currentUser?.email?.substring(0, 1).toUpperCase() ?? '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+      backgroundColor: const Color(0xFFF0F4F8),
+      body: SafeArea(
+        child: FutureBuilder<PlanModel?>(
+          future: _planFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snapshot.hasData || snapshot.data == null) {
+              return _buildEmptyState(); // Show a nice message if no plan
+            }
+
+            final plan = snapshot.data!;
+            final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+            final todaysCalendarEntry = plan.planData['calendar']?[today];
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  _buildTodaysPlanSection(plan, todaysCalendarEntry),
+                  const SizedBox(height: 24),
+                  _buildWeeklyProgressCard(plan),
+                  const SizedBox(height: 24),
+                  _buildUpcomingPlansSection(plan),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildProfileHeader(),
-            const SizedBox(height: 24),
-            _buildAccountInfoCard(),
-            const SizedBox(height: 24),
-            _buildProgressCard(),
-            const SizedBox(height: 24),
-            _buildNotesCard(),
-            const SizedBox(height: 24),
-            _buildBadgesCard(),
-            const SizedBox(height: 32),
-            _buildActionButton(
-              context: context,
-              icon: Icons.refresh,
-              text: 'Rewrite Plan',
-              isPrimary: true,
-            ),
-            const SizedBox(height: 16),
-            _buildActionButton(
-              context: context,
-              icon: Icons.lock_outline,
-              text: 'Change Password',
-            ),
-            const SizedBox(height: 16),
-            _buildLogoutButton(context),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader() {
+  Widget _buildHeader() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundColor: const Color(0xFF1EB955),
-          child: Text(
-            _currentUser?.email?.substring(0, 1).toUpperCase() ?? '?',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Note: DisplayName is not available by default with email/password auth
-            Text(
-              'Alex Johnson',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Member since Jan 2024',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-          ],
+        const Text('My Plan',
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+        IconButton(
+          icon: const Icon(Icons.calendar_today_outlined, size: 28),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CalendarScreen()),
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildAccountInfoCard() {
-    return _buildInfoCard(
-      title: 'Account Information',
-      child: ListTile(
-        leading: const Icon(Icons.email_outlined, color: Colors.grey),
-        title: const Text('Email'),
-        subtitle: Text(
-          // Display the current user's email
-          _currentUser?.email ?? 'No email available',
-          style:
-              const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+  Widget _buildTodaysPlanSection(
+      PlanModel plan, Map<String, dynamic>? calendarEntry) {
+    // Find today's workout and nutrition from the planData
+    final workout = plan.planData['workouts']?.firstWhere(
+        (w) => w['workoutId'] == calendarEntry?['workoutId'],
+        orElse: () => null);
+    // You can extend this to find nutrition data similarly
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("Today's Plan",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text('Plan Overview >',
+                style: TextStyle(
+                    color: Colors.green[600],
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16)),
+          ],
         ),
-      ),
+        const SizedBox(height: 10),
+        if (workout != null)
+          _buildWorkoutCard(workout)
+        else
+          _buildRestDayCard("No workout scheduled for today."),
+        const SizedBox(height: 16),
+        // Add nutrition card here if it exists for today
+        _buildRestDayCard("Nutrition plan for today."),
+      ],
     );
   }
 
-  Widget _buildProgressCard() {
-    return _buildInfoCard(
-      title: 'Your Progress',
+  Widget _buildWeeklyProgressCard(PlanModel plan) {
+    // Logic to calculate progress would go here
+    return _buildStyledContainer(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Row(children: [
+        Icon(Icons.trending_up, color: Colors.black87),
+        SizedBox(width: 8),
+        Text('Weekly Progress',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+      ]),
+      const SizedBox(height: 16),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        // Placeholder data
+        _buildProgressItem('0/7', 'Workouts', 0.0, Colors.green),
+        _buildProgressItem('0/21', 'Meals', 0.0, Colors.blue),
+      ])
+    ]));
+  }
+
+  Widget _buildUpcomingPlansSection(PlanModel plan) {
+    List<Widget> upcomingWidgets = [];
+    final today = DateTime.now();
+    for (int i = 1; i <= 3; i++) {
+      final upcomingDate = today.add(Duration(days: i));
+      final dateKey = DateFormat('yyyy-MM-dd').format(upcomingDate);
+      final calendarEntry = plan.planData['calendar']?[dateKey];
+
+      if (calendarEntry != null) {
+        final workout = plan.planData['workouts']?.firstWhere(
+            (w) => w['workoutId'] == calendarEntry['workoutId'],
+            orElse: () => null);
+        if (workout != null) {
+          upcomingWidgets.add(_buildUpcomingPlanCard(
+            day: DateFormat('EEE, MMM d').format(upcomingDate),
+            workout: workout['type'] ?? 'Workout',
+            // You can add meal details here if available
+          ));
+          upcomingWidgets.add(const SizedBox(height: 16));
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Upcoming Plans",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        ...upcomingWidgets,
+      ],
+    );
+  }
+
+  // --- UI Helper Widgets ---
+
+  Widget _buildEmptyState() {
+    return const Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+        padding: EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildStatColumn('156', 'Workouts'),
-            _buildStatColumn('23', 'Weeks'),
-            _buildStatColumn('12', 'Goals Met'),
+            Icon(Icons.map_outlined, size: 80, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No Active Plan',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Your personalized plan will appear here once it\'s generated.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNotesCard() {
-    return _buildInfoCard(
-      title: 'Injury / Adaptation Notes',
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+  Widget _buildWorkoutCard(Map<String, dynamic> workout) {
+    return _buildStyledContainer(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.fitness_center, color: Colors.green)),
+        const SizedBox(width: 12),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(workout['type'] ?? 'Workout',
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 4),
+          Text(
+              '🕒 ${workout['exercises']?.length ?? 0} exercises', // Placeholder for time
+              style: const TextStyle(color: Colors.black54))
+        ])
+      ]),
+      const SizedBox(height: 16),
+      const Text('View Details >',
+          style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 16),
+      ElevatedButton(
+          onPressed: () {},
+          style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15)),
+              elevation: 0),
+          child: const Text('Workout Completed',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16)))
+    ]));
+  }
+
+  Widget _buildRestDayCard(String message) {
+    return _buildStyledContainer(
+      child: Center(
         child: Column(
           children: [
-            Icon(Icons.notes_outlined, size: 40, color: Colors.grey[400]),
+            const Icon(Icons.bedtime_outlined, size: 40, color: Colors.grey),
             const SizedBox(height: 8),
-            const Text(
-              'Track any injuries, modifications, or special adaptations for your workouts',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+            Text(
+              message,
+              style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -175,143 +275,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildBadgesCard() {
-    return _buildInfoCard(
-      title: 'Badges & Streaks',
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.person_pin_circle_outlined,
-                  color: Colors.grey[400],
-                  size: 30,
-                ),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.local_fire_department_outlined,
-                  color: Colors.grey[400],
-                  size: 30,
-                ),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.calendar_month_outlined,
-                  color: Colors.grey[400],
-                  size: 30,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Earn badges and maintain streaks as you progress through your fitness journey',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required BuildContext context,
-    required IconData icon,
-    required String text,
-    bool isPrimary = false,
+  Widget _buildUpcomingPlanCard({
+    required String day,
+    required String workout,
   }) {
-    final color = isPrimary ? Colors.white : const Color(0xFF1EB955);
-    final backgroundColor = isPrimary ? const Color(0xFF1EB955) : Colors.white;
-
-    return ElevatedButton(
-      onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        foregroundColor: color,
-        backgroundColor: backgroundColor,
-        elevation: 0,
-        minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-          side: BorderSide(
-            color: isPrimary ? Colors.transparent : const Color(0xFF1EB955),
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
+    return _buildStyledContainer(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(day,
+            style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87)),
+        const SizedBox(height: 16),
+        Row(children: [
+          const Text('💪', style: TextStyle(fontSize: 20)),
+          const SizedBox(width: 8),
+          Text(workout,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))
+        ])
+      ])),
+      Text('View Details >',
+          style:
+              TextStyle(color: Colors.green[600], fontWeight: FontWeight.w600))
+    ]));
   }
 
-  Widget _buildLogoutButton(BuildContext context) {
-    return TextButton(
-      // Call the _signOut method when pressed
-      onPressed: _signOut,
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.logout, color: Colors.grey),
-          SizedBox(width: 8),
-          Text('Logout', style: TextStyle(color: Colors.grey, fontSize: 16)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCard({required String title, required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-Widget _buildStatColumn(String value, String label) {
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(
-        value,
-        style: const TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF1EB955),
-        ),
-      ),
+  Widget _buildProgressItem(
+      String value, String label, double progress, Color color) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(value,
+          style: TextStyle(
+              fontSize: 32, fontWeight: FontWeight.bold, color: color)),
       const SizedBox(height: 4),
-      Text(label, style: const TextStyle(color: Colors.grey)),
-    ],
-  );
+      Text(label, style: const TextStyle(color: Colors.black54)),
+      const SizedBox(height: 8),
+      SizedBox(
+          width: 120,
+          child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.grey.shade300,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(3)))
+    ]);
+  }
+
+  Widget _buildStyledContainer({required Widget child}) {
+    return Container(
+        padding: const EdgeInsets.all(20.0),
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.grey.withOpacity(0.08),
+                  spreadRadius: 2,
+                  blurRadius: 10,
+                  offset: const Offset(0, 4))
+            ]),
+        child: child);
+  }
 }
