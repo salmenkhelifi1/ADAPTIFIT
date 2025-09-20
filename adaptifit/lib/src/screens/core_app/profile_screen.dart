@@ -1,6 +1,9 @@
 import 'package:adaptifit/src/core/models/user_model.dart';
+import 'package:adaptifit/src/screens/auth/change_password_screen.dart';
 import 'package:adaptifit/src/screens/auth/welcome_screen.dart';
+import 'package:adaptifit/src/screens/core_app/settings_screen.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/services/n8n_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -14,6 +17,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final N8nService _n8nService = N8nService();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
   Future<UserModel?>? _userFuture;
 
@@ -39,6 +43,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showRewritePlanConfirmationDialog(UserModel user) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Rewrite Plan?'),
+          content: const Text(
+              'Are you sure you want to rewrite your plan? This will generate a new plan based on your onboarding answers.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Rewrite'),
+              onPressed: () {
+                _n8nService.triggerPlanGeneration(
+                  userId: user.id,
+                  onboardingAnswers: user.onboardingAnswers,
+                );
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Your plan is being regenerated. This may take a few minutes.'),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,16 +92,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.bold,
                 fontSize: 24)),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: const Color(0xFF1EB955),
-              radius: 20,
-              child: Text(
-                _currentUser?.email?.substring(0, 1).toUpperCase() ?? '?',
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsScreen()),
+              );
+            },
+          ),
+          CircleAvatar(
+            backgroundColor: const Color(0xFF1EB955),
+            radius: 20,
+            child: Text(
+              _currentUser?.email?.substring(0, 1).toUpperCase() ?? '?',
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -97,19 +143,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
                 _buildAccountInfoCard(user),
                 const SizedBox(height: 24),
-                _buildProgressCard(), // This still uses placeholder data
+                _buildProgressCard(user),
                 const SizedBox(height: 24),
                 _buildNotesCard(user),
                 const SizedBox(height: 24),
                 _buildOnboardingAnswersCard(user),
                 const SizedBox(height: 24),
-                _buildBadgesCard(),
+                _buildBadgesCard(user),
                 const SizedBox(height: 32),
                 _buildActionButton(
-                    icon: Icons.refresh, text: 'Rewrite Plan', isPrimary: true),
+                  icon: Icons.refresh,
+                  text: 'Rewrite Plan',
+                  isPrimary: true,
+                  onPressed: () => _showRewritePlanConfirmationDialog(user),
+                ),
                 const SizedBox(height: 16),
                 _buildActionButton(
-                    icon: Icons.lock_outline, text: 'Change Password'),
+                  icon: Icons.lock_outline,
+                  text: 'Change Password',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChangePasswordScreen(),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 16),
                 _buildLogoutButton(),
               ],
@@ -252,9 +312,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // --- Unchanged UI Widgets with placeholder data ---
+  Widget _buildProgressCard(UserModel user) {
+    final progress = user.progress;
+    final completedWorkouts = progress['completedWorkouts']?.toString() ?? '0';
+    final currentStreak = progress['currentStreak']?.toString() ?? '0';
+    final longestStreak = progress['longestStreak']?.toString() ?? '0';
 
-  Widget _buildProgressCard() {
     return _buildInfoCard(
       title: 'Your Progress',
       child: Padding(
@@ -262,54 +325,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildStatColumn('0', 'Workouts'),
-            _buildStatColumn('0', 'Weeks'),
-            _buildStatColumn('0', 'Goals Met'),
+            _buildStatColumn(completedWorkouts, 'Workouts'),
+            _buildStatColumn(currentStreak, 'Current Streak'),
+            _buildStatColumn(longestStreak, 'Longest Streak'),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBadgesCard() {
+  Widget _buildBadgesCard(UserModel user) {
+    final badges = List<String>.from(user.progress['badges'] ?? []);
+
     return _buildInfoCard(
       title: 'Badges & Streaks',
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.person_pin_circle_outlined,
-                    color: Colors.grey[400], size: 30),
-                const SizedBox(width: 16),
-                Icon(Icons.local_fire_department_outlined,
-                    color: Colors.grey[400], size: 30),
-                const SizedBox(width: 16),
-                Icon(Icons.calendar_month_outlined,
-                    color: Colors.grey[400], size: 30),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Earn badges and maintain streaks as you progress through your fitness journey',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
+            if (badges.isEmpty)
+              const Text(
+                'Earn badges by completing workouts and maintaining streaks!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              )
+            else
+              Wrap(
+                spacing: 16.0,
+                runSpacing: 16.0,
+                alignment: WrapAlignment.center,
+                children: badges.map((badge) => _buildBadgeIcon(badge)).toList(),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButton(
-      {required IconData icon, required String text, bool isPrimary = false}) {
+  Widget _buildBadgeIcon(String badgeName) {
+    IconData iconData;
+    switch (badgeName) {
+      case 'first_workout':
+        iconData = Icons.fitness_center;
+        break;
+      case '10_workouts':
+        iconData = Icons.star;
+        break;
+      case '5_day_streak':
+        iconData = Icons.local_fire_department;
+        break;
+      default:
+        iconData = Icons.emoji_events;
+    }
+    return Icon(iconData, color: const Color(0xFF1EB955), size: 30);
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String text,
+    bool isPrimary = false,
+    required VoidCallback onPressed,
+  }) {
     final color = isPrimary ? Colors.white : const Color(0xFF1EB955);
     final backgroundColor = isPrimary ? const Color(0xFF1EB955) : Colors.white;
 
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         foregroundColor: color,
         backgroundColor: backgroundColor,

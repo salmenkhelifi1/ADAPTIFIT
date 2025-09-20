@@ -91,6 +91,41 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
         'Enter custom dietary preferences',
       ],
     ),
+    OnboardingQuestion(
+      title: 'What is your current activity level?',
+      subtitle: 'This helps us gauge your starting point.',
+      type: QuestionType.singleChoice,
+      answerKey: 'activityLevel',
+      options: ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'],
+    ),
+    OnboardingQuestion(
+      title: 'How much time can you dedicate to each workout session?',
+      subtitle: 'This will help us tailor the length of your workouts.',
+      type: QuestionType.singleChoice,
+      answerKey: 'timePerSession',
+      options: ['15-30 minutes', '30-45 minutes', '45-60 minutes', '60+ minutes'],
+    ),
+    OnboardingQuestion(
+      title: 'Do you have access to a gym or will you be working out at home?',
+      subtitle: 'This determines the type of exercises in your plan.',
+      type: QuestionType.singleChoice,
+      answerKey: 'gymAccess',
+      options: ['Gym', 'Home', 'Both'],
+    ),
+    OnboardingQuestion(
+      title: 'What is your preferred workout split?',
+      subtitle: 'A workout split is how you organize your workouts throughout the week.',
+      type: QuestionType.singleChoice,
+      answerKey: 'workoutSplit',
+      options: ['Full Body', 'Upper/Lower', 'Push/Pull/Legs', 'Body Part Split'],
+    ),
+    OnboardingQuestion(
+      title: 'What equipment do you have access to?',
+      subtitle: 'List all the equipment you have available for your workouts.',
+      type: QuestionType.textArea,
+      answerKey: 'equipmentList',
+      placeholders: ['e.g., dumbbells, resistance bands, treadmill, etc.'],
+    ),
   ];
 
   late TextEditingController _textController;

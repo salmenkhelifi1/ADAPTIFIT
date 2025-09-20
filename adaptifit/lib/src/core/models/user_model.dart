@@ -19,6 +19,8 @@ class UserModel {
   final Timestamp createdAt;
   final Timestamp updatedAt;
 
+  final Map<String, dynamic> progress; // Added progress field
+
   UserModel({
     required this.id,
     required this.name,
@@ -37,6 +39,7 @@ class UserModel {
     this.activePlanId,
     required this.createdAt,
     required this.updatedAt,
+    required this.progress, // Added to constructor
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -53,6 +56,13 @@ class UserModel {
       dietType: map['dietType'] ?? '',
       planStartDate: map['planStartDate'] ?? '',
       skipNutrition: map['skipNutrition'] ?? false,
+      progress: Map<String, dynamic>.from(map['progress'] ??
+          {
+            'currentStreak': 0,
+            'longestStreak': 0,
+            'completedWorkouts': 0,
+            'badges': [],
+          }), // Added
       onboardingCompleted: map['onboardingCompleted'] ?? false,
       macros: Map<String, dynamic>.from(map['macros'] ?? {}),
       onboardingAnswers:

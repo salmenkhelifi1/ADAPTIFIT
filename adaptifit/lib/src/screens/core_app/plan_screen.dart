@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '/src/screens/core_app/calendar_screen.dart'; // Import the calendar screen
+import '/src/screens/core_app/workout_overview_screen.dart';
+import '/src/screens/core_app/nutrition_overview_screen.dart';
 
 class PlanScreen extends StatelessWidget {
   const PlanScreen({super.key});
@@ -62,9 +64,29 @@ class PlanScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              _buildWorkoutCard(),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const WorkoutOverviewScreen(workoutId: 'dummy_id'),
+                    ),
+                  );
+                },
+                child: _buildWorkoutCard(),
+              ),
               const SizedBox(height: 16),
-              _buildNutritionCard(),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NutritionOverviewScreen(nutritionId: 'dummy_id'),
+                    ),
+                  );
+                },
+                child: _buildNutritionCard(),
+              ),
               const SizedBox(height: 24),
 
               // --- Weekly Progress Section ---

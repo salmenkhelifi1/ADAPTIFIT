@@ -62,6 +62,23 @@ class AuthService {
     }
   }
 
+  // Change Password
+  Future<bool> changePassword(
+      {required String currentPassword, required String newPassword}) async {
+    bool success = false;
+    try {
+      User? user = _auth.currentUser;
+      AuthCredential credential = EmailAuthProvider.credential(
+          email: user!.email!, password: currentPassword);
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(newPassword);
+      success = true;
+    } on FirebaseAuthException catch (e) {
+      debugPrint(e.message);
+    }
+    return success;
+  }
+
   // Sign Out
   Future<void> signOut() async {
     await _auth.signOut();
