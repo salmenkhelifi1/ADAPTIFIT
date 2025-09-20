@@ -40,12 +40,21 @@ class AuthGate extends StatelessWidget {
                     body: Center(child: Text('Error fetching user data.')));
               }
               if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
-                // This case should ideally not happen if user is created correctly on sign up
-                return const Scaffold(
-                    body: Center(child: Text('User document not found.')));
+                // If user document is not found, log out and navigate to WelcomeScreen
+                FirebaseAuth.instance.signOut();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                        builder: (context) => const WelcomeScreen()),
+                    (Route<dynamic> route) => false,
+                  );
+                });
+                return const SizedBox
+                    .shrink(); // Return an empty widget while navigating
               }
 
-              final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+              final userData =
+                  userSnapshot.data!.data() as Map<String, dynamic>;
               if (userData['onboardingCompleted'] == true) {
                 return const MainScaffold();
               } else {

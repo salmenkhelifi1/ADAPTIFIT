@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:device_preview/device_preview.dart';
+
 import 'package:adaptifit/src/constants/app_strings.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
@@ -22,10 +24,12 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(
-    // Wrap your entire app with the ChangeNotifierProvider
-    ChangeNotifierProvider(
-      create: (context) => OnboardingProvider(),
-      child: const MyApp(),
+    DevicePreview(
+      enabled: true, // disable in release
+      builder: (context) => ChangeNotifierProvider(
+        create: (context) => OnboardingProvider(),
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -38,6 +42,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
+      useInheritedMediaQuery: true, // required for DevicePreview
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder, // required for DevicePreview
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryGreen),
         scaffoldBackgroundColor: AppColors.lightMintBackground,
@@ -45,20 +52,21 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         textTheme: const TextTheme(
           displayLarge: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: AppColors.black),
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: AppColors.black,
+          ),
           headlineMedium: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: AppColors.black),
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+            color: AppColors.black,
+          ),
           bodyLarge: TextStyle(fontSize: 16, color: Colors.black87),
           bodyMedium: TextStyle(fontSize: 14, color: AppColors.grey),
         ),
       ),
       // AuthGate remains the entry point
       home: const AuthGate(),
-      // Your routes are correct
       routes: {
         '/welcome': (context) => const WelcomeScreen(),
         '/create-account': (context) => const CreateAccountScreen(),

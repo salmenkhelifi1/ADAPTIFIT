@@ -1,5 +1,3 @@
-import 'package:adaptifit/src/services/firestore_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'daily_plan_detail_screen.dart'; // Import the new detail screen
@@ -12,10 +10,6 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  final User? _currentUser = FirebaseAuth.instance.currentUser;
-  Map<DateTime, List<dynamic>> _events = {};
-
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -23,34 +17,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _fetchCalendarData();
-  }
-
-  Future<void> _fetchCalendarData() async {
-    if (_currentUser == null) return;
-
-    final calendarData = await _firestoreService.getCalendarData(_currentUser!.uid);
-    final Map<DateTime, List<dynamic>> events = {};
-
-    for (var doc in calendarData.docs) {
-      try {
-        final date = DateTime.parse(doc.id);
-        final normalizedDate = DateTime.utc(date.year, date.month, date.day);
-        if (events.containsKey(normalizedDate)) {
-          events[normalizedDate]!.add(doc.data());
-        } else {
-          events[normalizedDate] = [doc.data()];
-        }
-      } catch (e) {
-        print('Error parsing date from document ID: ${doc.id}');
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _events = events;
-      });
-    }
   }
 
   @override
@@ -106,20 +72,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     _selectedDay = selectedDay;
                     _focusedDay = focusedDay;
                   });
-                  final normalizedDay = DateTime.utc(selectedDay.year, selectedDay.month, selectedDay.day);
-                  final eventsForDay = _events[normalizedDay] ?? [];
-
+                  // Navigate to the detail screen
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          DailyPlanDetailScreen(date: selectedDay, events: eventsForDay),
+                          DailyPlanDetailScreen(date: selectedDay),
                     ),
                   );
-                },
-                eventLoader: (day) {
-                  final normalizedDay = DateTime.utc(day.year, day.month, day.day);
-                  return _events[normalizedDay] ?? [];
                 },
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(
@@ -137,16 +97,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   titleTextStyle:
                       TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
+                // FIX: Use calendarBuilders instead of separate builders in CalendarStyle
                 calendarBuilders: CalendarBuilders(
-                  markerBuilder: (context, day, events) {
-                    if (events.isNotEmpty) {
-                      return Positioned(
-                        right: 1,
-                        bottom: 1,
-                        child: _buildEventsMarker(day, events),
-                      );
-                    }
-                    return null;
+                  defaultBuilder: (context, day, focusedDay) {
+                    return _buildDayCell(day, Colors.black);
+                  },
+                  selectedBuilder: (context, day, focusedDay) {
+                    return _buildDayCell(day, Colors.white, isSelected: true);
+                  },
+                  todayBuilder: (context, day, focusedDay) {
+                    return _buildDayCell(day, Colors.black, isToday: true);
                   },
                 ),
               ),
@@ -157,21 +117,62 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildEventsMarker(DateTime day, List events) {
+  Widget _buildDayCell(DateTime day, Color textColor,
+      {bool isSelected = false, bool isToday = false}) {
+    // Example logic for showing dots, you can replace with your actual data
+    bool hasWorkout = day.day % 2 == 0;
+    bool hasNutrition = day.day % 3 == 0;
+
+    // Use a slightly different color for the "today" circle to match design
+    Color todayColor = isToday ? const Color(0xFFD4EDDA) : Colors.transparent;
+
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.blue,
+      margin: const EdgeInsets.all(4.0),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF1EB955) : todayColor,
         shape: BoxShape.circle,
       ),
-      width: 16.0,
-      height: 16.0,
       child: Center(
-        child: Text(
-          '${events.length}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12.0,
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 4), // Space for dots
+            Text(
+              '${day.day}',
+              style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : (isToday ? Colors.black : textColor)),
+            ),
+            if (hasWorkout || hasNutrition)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (hasWorkout)
+                    Container(
+                      width: 5,
+                      height: 5,
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  if (hasNutrition)
+                    Container(
+                      width: 5,
+                      height: 5,
+                      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: const BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              )
+            else
+              const SizedBox(height: 8), // Placeholder to keep alignment
+          ],
         ),
       ),
     );
