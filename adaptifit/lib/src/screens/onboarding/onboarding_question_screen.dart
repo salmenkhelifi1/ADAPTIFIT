@@ -163,8 +163,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
 
     if (user != null) {
       final answers = onboardingProvider.answers;
-      await _firestoreService.updateOnboardingAnswers(
-          uid: user.uid, answers: answers);
+      await _firestoreService.updateOnboardingAnswers(answers);
       await _n8nService.triggerPlanGeneration(
           userId: user.uid, onboardingAnswers: answers);
 

@@ -1,17 +1,36 @@
+import 'package:adaptifit/src/core/models/calendar_day_model.dart';
+import 'package:adaptifit/src/core/models/nutrition_model.dart';
+import 'package:adaptifit/src/core/models/workout_model.dart';
+import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class DailyPlanDetailScreen extends StatelessWidget {
+class DailyPlanDetailScreen extends StatefulWidget {
   final DateTime date;
 
   const DailyPlanDetailScreen({super.key, required this.date});
 
   @override
+  State<DailyPlanDetailScreen> createState() => _DailyPlanDetailScreenState();
+}
+
+class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
+  late Stream<CalendarDayModel> _calendarDayStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final dateString = DateFormat('yyyy-MM-dd').format(widget.date);
+    _calendarDayStream = _firestoreService.getCalendarEntry(dateString);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF0F0F8),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF0F4F8),
+        backgroundColor: const Color(0xFFF0F0F8),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
@@ -24,32 +43,90 @@ class DailyPlanDetailScreen extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              DateFormat('EEEE').format(date), // e.g., "Wednesday"
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+      body: StreamBuilder<CalendarDayModel>(
+        stream: _calendarDayStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData) {
+            return Center(
+              child: _buildNoPlanMessage(),
+            );
+          }
+
+          final calendarDay = snapshot.data!;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  DateFormat('EEEE').format(widget.date), // e.g., "Wednesday"
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('MMMM d, yyyy')
+                      .format(widget.date), // e.g., "December 4, 2024"
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+                const SizedBox(height: 24),
+                if (calendarDay.hasWorkout)
+                  StreamBuilder<List<WorkoutModel>>(
+                    stream: _firestoreService.getWorkouts(calendarDay.planId),
+                    builder: (context, workoutSnapshot) {
+                      if (!workoutSnapshot.hasData) {
+                        return const SizedBox.shrink();
+                      }
+                      final workout = workoutSnapshot.data!.firstWhere(
+                          (w) => w.id == calendarDay.workoutId, orElse: () => WorkoutModel(id: '', name: 'Workout not found', exercises: []));
+                      return _buildWorkoutPlanCard(workout);
+                    },
+                  ),
+                const SizedBox(height: 20),
+                if (calendarDay.hasNutrition)
+                  StreamBuilder<List<NutritionModel>>(
+                    stream: _firestoreService.getNutritionPlans(),
+                    builder: (context, nutritionSnapshot) {
+                      if (!nutritionSnapshot.hasData) {
+                        return const SizedBox.shrink();
+                      }
+                      final nutrition = nutritionSnapshot.data!.firstWhere(
+                          (n) => calendarDay.nutritionIds.contains(n.nutritionId), orElse: () => NutritionModel(nutritionId: '', mealPlanName: 'Not Found', day: '', meals: [], calories: 0, protein: 0, carbs: 0, fat: 0));
+                      return _buildNutritionPlanCard(nutrition);
+                    },
+                  ),
+                const SizedBox(height: 20),
+                _buildDailyTasksCard(),
+                const SizedBox(height: 20),
+                _buildDailyNotesCard(),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              DateFormat('MMMM d, yyyy')
-                  .format(date), // e.g., "December 4, 2024"
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-            const SizedBox(height: 24),
-            _buildWorkoutPlanCard(),
-            const SizedBox(height: 20),
-            _buildNutritionPlanCard(),
-            const SizedBox(height: 20),
-            _buildDailyTasksCard(),
-            const SizedBox(height: 20),
-            _buildDailyNotesCard(),
-          ],
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  Widget _buildNoPlanMessage() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.event_busy, size: 80, color: Colors.grey[400]),
+        const SizedBox(height: 20),
+        const Text(
+          'No plan for this day',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Enjoy your rest day or explore other options!',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16, color: Colors.black54),
+        ),
+      ],
     );
   }
 
@@ -71,7 +148,7 @@ class DailyPlanDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWorkoutPlanCard() {
+  Widget _buildWorkoutPlanCard(WorkoutModel workout) {
     return _buildStyledCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,17 +164,17 @@ class DailyPlanDetailScreen extends StatelessWidget {
                 child: const Icon(Icons.fitness_center, color: Colors.green),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Workout Plan',
+                      workout.name,
                       style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 4),
-                    Text(
+                    const SizedBox(height: 4),
+                    const Text(
                       'Full Body HIIT · 45 minutes',
                       style: TextStyle(color: Colors.black54),
                     ),
@@ -153,7 +230,7 @@ class DailyPlanDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNutritionPlanCard() {
+  Widget _buildNutritionPlanCard(NutritionModel nutrition) {
     return _buildStyledCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,17 +246,17 @@ class DailyPlanDetailScreen extends StatelessWidget {
                 child: const Icon(Icons.apple, color: Colors.blue),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Nutrition Plan',
+                      nutrition.mealPlanName,
                       style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 4),
-                    Text(
+                    const SizedBox(height: 4),
+                    const Text(
                       'Low Carb Focus · 2,100 cal',
                       style: TextStyle(color: Colors.black54),
                     ),
@@ -200,66 +277,48 @@ class DailyPlanDetailScreen extends StatelessWidget {
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   "Today's Meals",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Breakfast:', style: TextStyle(color: Colors.black54)),
-                    Text('Overnight Oats'),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Lunch:', style: TextStyle(color: Colors.black54)),
-                    Text('Quinoa Power Bowl'),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Dinner:', style: TextStyle(color: Colors.black54)),
-                    Text('Grilled Salmon & Vegetables'),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Snacks:', style: TextStyle(color: Colors.black54)),
-                    Text('Mixed nuts & fruit'),
-                  ],
-                ),
+                const SizedBox(height: 12),
+                if (nutrition.meals.isNotEmpty)
+                  ...nutrition.meals.map((meal) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(meal.split(':')[0] + ':', style: const TextStyle(color: Colors.black54)),
+                        Text(meal.split(':')[1]),
+                      ],
+                    ),
+                  )),
+                if (nutrition.meals.isEmpty)
+                  const Text('No meals planned for today.', style: TextStyle(color: Colors.black54)),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               Column(
                 children: [
-                  Text('2,100',
+                  Text('${nutrition.calories}',
                       style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('Calories', style: TextStyle(color: Colors.black54)),
+                          const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text('Calories', style: TextStyle(color: Colors.black54)),
                 ],
               ),
               Column(
                 children: [
-                  Text('150g',
+                  Text('${nutrition.protein}g',
                       style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('Protein', style: TextStyle(color: Colors.black54)),
+                          const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text('Protein', style: TextStyle(color: Colors.black54)),
                 ],
               ),
             ],

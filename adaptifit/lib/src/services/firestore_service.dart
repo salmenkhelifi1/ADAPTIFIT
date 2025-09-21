@@ -1,149 +1,192 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
-import 'package:adaptifit/src/core/models/chat_message.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../core/models/plan_model.dart';
+import '../core/models/workout_model.dart';
+import '../core/models/user_model.dart';
+import '../core/models/nutrition_model.dart';
+import '../core/models/calendar_day_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Creates a new user document in the 'users' collection
+  // Get current user
+  User? get currentUser => FirebaseAuth.instance.currentUser;
+
+  // Get user document
+  DocumentReference<Map<String, dynamic>> get userDoc {
+    final user = currentUser;
+    if (user == null) {
+      throw Exception('User not logged in');
+    }
+    return _db.collection('users').doc(user.uid);
+  }
+
+  // Create a new user document
   Future<void> createUserDocument({
     required String uid,
     required String email,
     required String firstName,
-  }) async {
-    try {
-      debugPrint('Firestore: Creating user document for UID: $uid');
-      await _db.collection('users').doc(uid).set({
-        'uid': uid,
-        'email': email,
-        'firstName': firstName,
-        'createdAt': Timestamp.now(),
-        'onboardingAnswers': {},
-        'onboardingCompleted': false,
-        'activePlanId': null,
-        'progress': {
-          'currentStreak': 0,
-          'longestStreak': 0,
-          'completedWorkouts': 0,
-          'badges': [],
-        },
-      });
-      debugPrint('Firestore: Successfully created user document for UID: $uid');
-    } catch (e) {
-      debugPrint('Firestore: ERROR creating user document: $e');
-    }
+  }) {
+    final user = UserModel(
+      id: uid,
+      name: firstName,
+      email: email,
+      age: 0,
+      daysPerWeek: 3,
+      fitnessLevel: 'beginner',
+      goal: '',
+      workoutStyle: 'split',
+      dietType: '',
+      planStartDate: '',
+      skipNutrition: false,
+      onboardingCompleted: false,
+      macros: {},
+      onboardingAnswers: {},
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      progress: {},
+    );
+    return _db.collection('users').doc(uid).set(user.toMap());
   }
 
-  /// Updates an existing user's document with their onboarding answers.
-  Future<void> updateOnboardingAnswers({
-    required String uid,
-    required Map<String, dynamic> answers,
-  }) async {
-    try {
-      debugPrint('Firestore: Updating onboarding answers for UID: $uid');
-      await _db
-          .collection('users')
-          .doc(uid)
-          .update({'onboardingAnswers': answers, 'onboardingCompleted': true});
-      debugPrint(
-          'Firestore: Successfully updated onboarding answers for UID: $uid');
-    } catch (e) {
-      debugPrint('Firestore: ERROR updating onboarding answers: $e');
-    }
+  // Get user model
+  Stream<UserModel> getUser() {
+    return userDoc.snapshots().map((snapshot) => UserModel.fromFirestore(snapshot));
   }
 
-  /// Parses the JSON from N8N and saves the plan, workouts, and calendar entries.
-  Future<void> addPlanFromN8n({
-    required String userId,
-    required Map<String, dynamic> planJson,
-  }) async {
-    try {
-      debugPrint('Firestore: Starting to add plan from N8N for user: $userId');
-      final WriteBatch batch = _db.batch();
-      final userRef = _db.collection('users').doc(userId);
-
-      // 1. Create the main plan document
-      final planId = planJson['planId'];
-      final planRef = userRef.collection('plans').doc(planId);
-      batch.set(planRef, {
-        'userId': userId,
-        'createdAt': Timestamp.now(),
-        'status': 'active',
-        'planMetadata': planJson['planMetadata'],
-      });
-      debugPrint('Firestore: Batch - Added plan document with ID: $planId');
-
-      // 2. Add each workout to a subcollection within the plan
-      for (var workout in planJson['workouts']) {
-        final workoutRef =
-            planRef.collection('workouts').doc(workout['workoutId']);
-        batch.set(workoutRef, workout);
-      }
-      debugPrint(
-          'Firestore: Batch - Added ${planJson['workouts'].length} workouts.');
-
-      // 3. Add each calendar entry to a user-level calendar collection
-      planJson['calendar'].forEach((date, details) {
-        final calendarRef = userRef.collection('calendar').doc(date);
-        batch.set(calendarRef, details);
-      });
-      debugPrint(
-          'Firestore: Batch - Added ${planJson['calendar'].length} calendar entries.');
-
-      // 4. Update the user's active plan ID
-      batch.update(userRef, {'activePlanId': planId});
-      debugPrint('Firestore: Batch - Set activePlanId to: $planId');
-
-      // Commit all operations as a single transaction
-      await batch.commit();
-      debugPrint(
-          "Firestore: Successfully committed plan from N8N to Firestore for user $userId.");
-    } catch (e) {
-      debugPrint('Firestore: ERROR adding plan from N8N: $e');
-    }
+  // Update onboarding answers
+  Future<void> updateOnboardingAnswers(Map<String, dynamic> answers) {
+    return userDoc.update({
+      'onboardingAnswers': answers,
+      'onboardingCompleted': true,
+      'updatedAt': Timestamp.now(),
+    });
   }
 
-  /// Retrieves a user's document from the 'users' collection
-  Future<DocumentSnapshot> getUser(String uid) {
-    debugPrint('Firestore: Getting user document for UID: $uid');
-    return _db.collection('users').doc(uid).get();
+  //-- Plans --//
+
+  // Get all plans for the current user
+  Stream<List<PlanModel>> getPlans() {
+    return userDoc
+        .collection('plans')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PlanModel.fromFirestore(doc))
+            .toList());
   }
 
-  /// Retrieves the calendar data for a user.
-  Future<QuerySnapshot> getCalendarData(String uid) {
-    return _db.collection('users').doc(uid).collection('calendar').get();
+  // Add a new plan
+  Future<DocumentReference> addPlan(PlanModel plan) {
+    return userDoc.collection('plans').add(plan.toMap());
   }
 
-  // --- CHAT METHODS ---
-
-  /// Adds a new chat message to the user's chat history subcollection.
-  Future<void> addChatMessage({
-    required String userId,
-    required ChatMessage message,
-  }) async {
-    try {
-      debugPrint(
-          'Firestore: Adding chat message for user: $userId. IsUser: ${message.isUser}');
-      await _db
-          .collection('users')
-          .doc(userId)
-          .collection('chatHistory')
-          .add(message.toJson());
-      debugPrint(
-          'Firestore: Successfully added chat message for user: $userId');
-    } catch (e) {
-      debugPrint('Firestore: ERROR adding chat message: $e');
-    }
+  // Update a plan
+  Future<void> updatePlan(String planId, PlanModel plan) {
+    return userDoc.collection('plans').doc(planId).update(plan.toMap());
   }
 
-  /// Returns a stream of chat messages for a given user, ordered by timestamp.
-  Stream<QuerySnapshot> getChatStream(String userId) {
-    debugPrint('Firestore: Setting up chat stream for user: $userId');
-    return _db
-        .collection('users')
-        .doc(userId)
-        .collection('chatHistory')
-        .orderBy('timestamp', descending: true)
-        .snapshots();
+  // Delete a plan
+  Future<void> deletePlan(String planId) {
+    return userDoc.collection('plans').doc(planId).delete();
+  }
+
+  //-- Workouts --//
+
+  // Get all workouts for a specific plan
+  Stream<List<WorkoutModel>> getWorkouts(String planId) {
+    return userDoc
+        .collection('plans')
+        .doc(planId)
+        .collection('workouts')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => WorkoutModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Add a new workout to a plan
+  Future<DocumentReference> addWorkout(String planId, WorkoutModel workout) {
+    return userDoc
+        .collection('plans')
+        .doc(planId)
+        .collection('workouts')
+        .add(workout.toMap());
+  }
+
+  // Update a workout
+  Future<void> updateWorkout(String planId, String workoutId, WorkoutModel workout) {
+    return userDoc
+        .collection('plans')
+        .doc(planId)
+        .collection('workouts')
+        .doc(workoutId)
+        .update(workout.toMap());
+  }
+
+  // Delete a workout
+  Future<void> deleteWorkout(String planId, String workoutId) {
+    return userDoc
+        .collection('plans')
+        .doc(planId)
+        .collection('workouts')
+        .doc(workoutId)
+        .delete();
+  }
+
+  //-- Calendar --//
+
+  // Get calendar entry for a specific date
+  Stream<CalendarDayModel> getCalendarEntry(String date) {
+    return userDoc
+        .collection('calendar')
+        .doc(date)
+        .snapshots()
+        .map((snapshot) => CalendarDayModel.fromFirestore(snapshot));
+  }
+
+  // Get all calendar entries
+  Stream<List<CalendarDayModel>> getCalendarEntries() {
+    return userDoc
+        .collection('calendar')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => CalendarDayModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Set or update a calendar entry
+  Future<void> setCalendarEntry(String date, CalendarDayModel data) {
+    return userDoc.collection('calendar').doc(date).set(data.toMap());
+  }
+
+  //-- Nutrition --//
+
+  // Get all nutrition plans
+  Stream<List<NutritionModel>> getNutritionPlans() {
+    return userDoc
+        .collection('nutrition')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => NutritionModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Add a nutrition plan
+  Future<DocumentReference> addNutritionPlan(NutritionModel nutrition) {
+    return userDoc.collection('nutrition').add(nutrition.toMap());
+  }
+
+  // Update a nutrition plan
+  Future<void> updateNutritionPlan(String nutritionId, NutritionModel nutrition) {
+    return userDoc
+        .collection('nutrition')
+        .doc(nutritionId)
+        .update(nutrition.toMap());
+  }
+
+  // Delete a nutrition plan
+  Future<void> deleteNutritionPlan(String nutritionId) {
+    return userDoc.collection('nutrition').doc(nutritionId).delete();
   }
 }

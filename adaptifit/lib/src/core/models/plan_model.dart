@@ -25,4 +25,12 @@ class PlanModel {
       planData: data['planData'] ?? {},
     );
   }
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'createdAt': createdAt,
+      'status': status,
+      'planData': planData,
+    };
+  }
 }

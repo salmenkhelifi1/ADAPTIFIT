@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class NutritionModel {
   final String nutritionId;
   final String mealPlanName;
@@ -19,16 +21,17 @@ class NutritionModel {
     required this.fat,
   });
 
-  factory NutritionModel.fromMap(String id, Map<String, dynamic> map) {
+  factory NutritionModel.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return NutritionModel(
-      nutritionId: id,
-      mealPlanName: map['mealPlanName'] ?? '',
-      day: map['day'] ?? '',
-      meals: List<String>.from(map['meals'] ?? []),
-      calories: map['calories'] ?? 0,
-      protein: map['protein'] ?? 0,
-      carbs: map['carbs'] ?? 0,
-      fat: map['fat'] ?? 0,
+      nutritionId: doc.id,
+      mealPlanName: data['mealPlanName'] ?? '',
+      day: data['day'] ?? '',
+      meals: List<String>.from(data['meals'] ?? []),
+      calories: data['calories'] ?? 0,
+      protein: data['protein'] ?? 0,
+      carbs: data['carbs'] ?? 0,
+      fat: data['fat'] ?? 0,
     );
   }
 

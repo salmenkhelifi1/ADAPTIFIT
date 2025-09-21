@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class CalendarDayModel {
   final String date;
   final String planId;
@@ -25,19 +27,20 @@ class CalendarDayModel {
     required this.status,
   });
 
-  factory CalendarDayModel.fromMap(String date, Map<String, dynamic> map) {
+  factory CalendarDayModel.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return CalendarDayModel(
-      date: date,
-      planId: map['planId'] ?? '',
-      weekday: map['weekday'] ?? '',
-      workoutId: map['workoutId'] ?? '',
-      workoutType: map['workoutType'] ?? '',
-      weekIndex: map['weekIndex'] ?? 0,
-      workoutSequenceIndex: map['workoutSequenceIndex'] ?? 0,
-      hasWorkout: map['hasWorkout'] ?? false,
-      hasNutrition: map['hasNutrition'] ?? false,
-      nutritionIds: List<String>.from(map['nutritionIds'] ?? []),
-      status: map['status'] ?? 'not started',
+      date: doc.id,
+      planId: data['planId'] ?? '',
+      weekday: data['weekday'] ?? '',
+      workoutId: data['workoutId'] ?? '',
+      workoutType: data['workoutType'] ?? '',
+      weekIndex: data['weekIndex'] ?? 0,
+      workoutSequenceIndex: data['workoutSequenceIndex'] ?? 0,
+      hasWorkout: data['hasWorkout'] ?? false,
+      hasNutrition: data['hasNutrition'] ?? false,
+      nutritionIds: List<String>.from(data['nutritionIds'] ?? []),
+      status: data['status'] ?? 'not started',
     );
   }
 

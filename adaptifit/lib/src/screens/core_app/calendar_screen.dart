@@ -1,4 +1,7 @@
+import 'package:adaptifit/src/core/models/calendar_day_model.dart';
+import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'daily_plan_detail_screen.dart'; // Import the new detail screen
 
@@ -10,8 +13,10 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  Map<DateTime, CalendarDayModel> _calendarData = {};
 
   @override
   void initState() {
@@ -37,93 +42,102 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const Text(
-              'Select a date to see its workout and nutrition details.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54, fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 2,
-                    blurRadius: 10,
+      body: StreamBuilder<List<CalendarDayModel>>(
+        stream: _firestoreService.getCalendarEntries(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            _calendarData = {
+              for (var entry in snapshot.data!)
+                DateFormat('yyyy-MM-dd').parseUtc(entry.date): entry
+            };
+          }
+          return Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                const Text(
+                  'Select a date to see its workout and nutrition details.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54, fontSize: 16),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 2,
+                        blurRadius: 10,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: TableCalendar(
-                firstDay: DateTime.utc(2020, 1, 1),
-                lastDay: DateTime.utc(2030, 12, 31),
-                focusedDay: _focusedDay,
-                selectedDayPredicate: (day) {
-                  return isSameDay(_selectedDay, day);
-                },
-                onDaySelected: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay = focusedDay;
-                  });
-                  // Navigate to the detail screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          DailyPlanDetailScreen(date: selectedDay),
+                  child: TableCalendar(
+                    firstDay: DateTime.utc(2020, 1, 1),
+                    lastDay: DateTime.utc(2030, 12, 31),
+                    focusedDay: _focusedDay,
+                    selectedDayPredicate: (day) {
+                      return isSameDay(_selectedDay, day);
+                    },
+                    onDaySelected: (selectedDay, focusedDay) {
+                      setState(() {
+                        _selectedDay = selectedDay;
+                        _focusedDay = focusedDay;
+                      });
+                      // Navigate to the detail screen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              DailyPlanDetailScreen(date: selectedDay),
+                        ),
+                      );
+                    },
+                    calendarStyle: CalendarStyle(
+                      todayDecoration: BoxDecoration(
+                        color: Colors.green[200],
+                        shape: BoxShape.circle,
+                      ),
+                      selectedDecoration: const BoxDecoration(
+                        color: Color(0xFF1EB955),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  );
-                },
-                calendarStyle: CalendarStyle(
-                  todayDecoration: BoxDecoration(
-                    color: Colors.green[200],
-                    shape: BoxShape.circle,
+                    headerStyle: const HeaderStyle(
+                      titleCentered: true,
+                      formatButtonVisible: false,
+                      titleTextStyle:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    calendarBuilders: CalendarBuilders(
+                      defaultBuilder: (context, day, focusedDay) {
+                        final calendarDay = _calendarData[day];
+                        return _buildDayCell(day, calendarDay, Colors.black);
+                      },
+                      selectedBuilder: (context, day, focusedDay) {
+                        final calendarDay = _calendarData[day];
+                        return _buildDayCell(day, calendarDay, Colors.white, isSelected: true);
+                      },
+                      todayBuilder: (context, day, focusedDay) {
+                        final calendarDay = _calendarData[day];
+                        return _buildDayCell(day, calendarDay, Colors.black, isToday: true);
+                      },
+                    ),
                   ),
-                  selectedDecoration: const BoxDecoration(
-                    color: Color(0xFF1EB955),
-                    shape: BoxShape.circle,
-                  ),
                 ),
-                headerStyle: const HeaderStyle(
-                  titleCentered: true,
-                  formatButtonVisible: false,
-                  titleTextStyle:
-                      TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                // FIX: Use calendarBuilders instead of separate builders in CalendarStyle
-                calendarBuilders: CalendarBuilders(
-                  defaultBuilder: (context, day, focusedDay) {
-                    return _buildDayCell(day, Colors.black);
-                  },
-                  selectedBuilder: (context, day, focusedDay) {
-                    return _buildDayCell(day, Colors.white, isSelected: true);
-                  },
-                  todayBuilder: (context, day, focusedDay) {
-                    return _buildDayCell(day, Colors.black, isToday: true);
-                  },
-                ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildDayCell(DateTime day, Color textColor,
-      {bool isSelected = false, bool isToday = false}) {
-    // Example logic for showing dots, you can replace with your actual data
-    bool hasWorkout = day.day % 2 == 0;
-    bool hasNutrition = day.day % 3 == 0;
+  Widget _buildDayCell(DateTime day, CalendarDayModel? calendarDay,
+      Color textColor, {bool isSelected = false, bool isToday = false}) {
 
-    // Use a slightly different color for the "today" circle to match design
     Color todayColor = isToday ? const Color(0xFFD4EDDA) : Colors.transparent;
 
     return Container(
@@ -144,11 +158,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ? Colors.white
                       : (isToday ? Colors.black : textColor)),
             ),
-            if (hasWorkout || hasNutrition)
+            if (calendarDay != null && (calendarDay.hasWorkout || calendarDay.hasNutrition))
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (hasWorkout)
+                  if (calendarDay.hasWorkout)
                     Container(
                       width: 5,
                       height: 5,
@@ -158,7 +172,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         shape: BoxShape.circle,
                       ),
                     ),
-                  if (hasNutrition)
+                  if (calendarDay.hasNutrition)
                     Container(
                       width: 5,
                       height: 5,

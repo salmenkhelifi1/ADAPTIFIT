@@ -19,19 +19,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final N8nService _n8nService = N8nService();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
-  Future<UserModel?>? _userFuture;
+  Stream<UserModel>? _userStream;
 
   @override
   void initState() {
     super.initState();
     if (_currentUser != null) {
-      _userFuture =
-          _firestoreService.getUser(_currentUser!.uid).then((snapshot) {
-        if (snapshot.exists) {
-          return UserModel.fromFirestore(snapshot);
-        }
-        return null;
-      });
+      _userStream = _firestoreService.getUser();
     }
   }
 
@@ -112,8 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<UserModel?>(
-        future: _userFuture,
+      body: StreamBuilder<UserModel>(
+        stream: _userStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -129,7 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
           }
-          if (!snapshot.hasData || snapshot.data == null) {
+          if (!snapshot.hasData) {
             return const Center(child: Text('Could not find user profile.'));
           }
 
