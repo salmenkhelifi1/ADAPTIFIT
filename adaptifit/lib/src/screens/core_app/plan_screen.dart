@@ -78,66 +78,82 @@ class _PlanScreenState extends State<PlanScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-              StreamBuilder<CalendarDayModel>(
-                stream: _firestoreService.getCalendarEntry(today),
-                builder: (context, calendarSnapshot) {
-                  if (calendarSnapshot.connectionState == ConnectionState.waiting) {
+              StreamBuilder<UserModel>(
+                stream: _firestoreService.getUser(),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  if (!calendarSnapshot.hasData) {
-                    return _buildNoPlanCard();
-                  }
+                  final user = userSnapshot.data;
 
-                  final calendarDay = calendarSnapshot.data!;
+                  return StreamBuilder<CalendarDayModel>(
+                    stream: _firestoreService.getCalendarEntry(today),
+                    builder: (context, calendarSnapshot) {
+                      if (calendarSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  return Column(
-                    children: [
-                      if (calendarDay.hasWorkout)
-                        StreamBuilder<List<WorkoutModel>>(
-                          stream: _firestoreService.getWorkouts(calendarDay.planId),
-                          builder: (context, workoutSnapshot) {
-                            if (!workoutSnapshot.hasData) {
-                              return const SizedBox.shrink();
-                            }
-                            final workout = workoutSnapshot.data!.firstWhere(
-                                (w) => w.id == calendarDay.workoutId, orElse: () => WorkoutModel(id: '', name: 'Workout not found', exercises: []));
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => WorkoutOverviewScreen(workoutId: workout.id),
-                                  ),
+                      // Check if onboarding is complete but plan is not yet generated
+                      if (user != null && user.onboardingAnswers.isNotEmpty && !calendarSnapshot.hasData) {
+                        return _buildGeneratingPlanCard();
+                      }
+
+                      if (!calendarSnapshot.hasData) {
+                        return _buildNoPlanCard();
+                      }
+
+                      final calendarDay = calendarSnapshot.data!;
+
+                      return Column(
+                        children: [
+                          if (calendarDay.hasWorkout)
+                            StreamBuilder<List<WorkoutModel>>(
+                              stream: _firestoreService.getWorkouts(calendarDay.planId),
+                              builder: (context, workoutSnapshot) {
+                                if (!workoutSnapshot.hasData) {
+                                  return const SizedBox.shrink();
+                                }
+                                final workout = workoutSnapshot.data!.firstWhere(
+                                    (w) => w.id == calendarDay.workoutId, orElse: () => WorkoutModel(id: '', name: 'Workout not found', exercises: []));
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => WorkoutOverviewScreen(workoutId: workout.id),
+                                      ),
+                                    );
+                                  },
+                                  child: _buildWorkoutCard(workout),
                                 );
                               },
-                              child: _buildWorkoutCard(workout),
-                            );
-                          },
-                        ),
-                      const SizedBox(height: 16),
-                      if (calendarDay.hasNutrition)
-                        StreamBuilder<List<NutritionModel>>(
-                          stream: _firestoreService.getNutritionPlans(),
-                          builder: (context, nutritionSnapshot) {
-                            if (!nutritionSnapshot.hasData) {
-                              return const SizedBox.shrink();
-                            }
-                            final nutrition = nutritionSnapshot.data!.firstWhere(
-                                (n) => calendarDay.nutritionIds.contains(n.nutritionId), orElse: () => NutritionModel(nutritionId: '', mealPlanName: 'Not Found', day: '', meals: [], calories: 0, protein: 0, carbs: 0, fat: 0));
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => NutritionOverviewScreen(nutritionId: nutrition.nutritionId),
-                                  ),
+                            ),
+                          const SizedBox(height: 16),
+                          if (calendarDay.hasNutrition)
+                            StreamBuilder<List<NutritionModel>>(
+                              stream: _firestoreService.getNutritionPlans(),
+                              builder: (context, nutritionSnapshot) {
+                                if (!nutritionSnapshot.hasData) {
+                                  return const SizedBox.shrink();
+                                }
+                                final nutrition = nutritionSnapshot.data!.firstWhere(
+                                    (n) => calendarDay.nutritionIds.contains(n.nutritionId), orElse: () => NutritionModel(nutritionId: '', mealPlanName: 'Not Found', day: '', meals: [], calories: 0, protein: 0, carbs: 0, fat: 0));
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => NutritionOverviewScreen(nutritionId: nutrition.nutritionId),
+                                      ),
+                                    );
+                                  },
+                                  child: _buildNutritionCard(nutrition),
                                 );
                               },
-                              child: _buildNutritionCard(nutrition),
-                            );
-                          },
-                        ),
-                    ],
+                            ),
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -245,6 +261,30 @@ class _PlanScreenState extends State<PlanScreen> {
             size: 40,
             color: Colors.grey,
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeneratingPlanCard() {
+    return _buildStyledContainer(
+      child: Column(
+        children: const [
+          Text(
+            "Generating Your Plan...",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            "Please wait while we create your personalized fitness and nutrition plan. This may take a few minutes.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black54),
+          ),
+          SizedBox(height: 16),
+          CircularProgressIndicator(),
         ],
       ),
     );

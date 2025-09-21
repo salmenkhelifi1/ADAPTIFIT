@@ -1,4 +1,5 @@
 import 'package:adaptifit/src/core/models/calendar_day_model.dart';
+import 'package:adaptifit/src/core/models/user_model.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -42,95 +43,140 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         centerTitle: true,
       ),
-      body: StreamBuilder<List<CalendarDayModel>>(
-        stream: _firestoreService.getCalendarEntries(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            _calendarData = {
-              for (var entry in snapshot.data!)
-                DateFormat('yyyy-MM-dd').parseUtc(entry.date): entry
-            };
+      body: StreamBuilder<UserModel>(
+        stream: _firestoreService.getUser(),
+        builder: (context, userSnapshot) {
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
-          return Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
-                const Text(
-                  'Select a date to see its workout and nutrition details.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54, fontSize: 16),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 2,
-                        blurRadius: 10,
+          final user = userSnapshot.data;
+
+          return StreamBuilder<List<CalendarDayModel>>(
+            stream: _firestoreService.getCalendarEntries(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              // Check if onboarding is complete but plan is not yet generated
+              if (user != null && user.onboardingAnswers.isNotEmpty && !snapshot.hasData) {
+                return _buildGeneratingPlanMessage();
+              }
+
+              if (snapshot.hasData) {
+                _calendarData = {
+                  for (var entry in snapshot.data!)
+                    DateFormat('yyyy-MM-dd').parseUtc(entry.date): entry
+                };
+              }
+              return Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Select a date to see its workout and nutrition details.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.black54, fontSize: 16),
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 2,
+                            blurRadius: 10,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: TableCalendar(
-                    firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.utc(2030, 12, 31),
-                    focusedDay: _focusedDay,
-                    selectedDayPredicate: (day) {
-                      return isSameDay(_selectedDay, day);
-                    },
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                      // Navigate to the detail screen
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              DailyPlanDetailScreen(date: selectedDay),
+                      child: TableCalendar(
+                        firstDay: DateTime.utc(2020, 1, 1),
+                        lastDay: DateTime.utc(2030, 12, 31),
+                        focusedDay: _focusedDay,
+                        selectedDayPredicate: (day) {
+                          return isSameDay(_selectedDay, day);
+                        },
+                        onDaySelected: (selectedDay, focusedDay) {
+                          setState(() {
+                            _selectedDay = selectedDay;
+                            _focusedDay = focusedDay;
+                          });
+                          // Navigate to the detail screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  DailyPlanDetailScreen(date: selectedDay),
+                            ),
+                          );
+                        },
+                        calendarStyle: CalendarStyle(
+                          todayDecoration: BoxDecoration(
+                            color: Colors.green[200],
+                            shape: BoxShape.circle,
+                          ),
+                          selectedDecoration: const BoxDecoration(
+                            color: Color(0xFF1EB955),
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      );
-                    },
-                    calendarStyle: CalendarStyle(
-                      todayDecoration: BoxDecoration(
-                        color: Colors.green[200],
-                        shape: BoxShape.circle,
+                        headerStyle: const HeaderStyle(
+                          titleCentered: true,
+                          formatButtonVisible: false,
+                          titleTextStyle:
+                              TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        calendarBuilders: CalendarBuilders(
+                          defaultBuilder: (context, day, focusedDay) {
+                            final calendarDay = _calendarData[day];
+                            return _buildDayCell(day, calendarDay, Colors.black);
+                          },
+                          selectedBuilder: (context, day, focusedDay) {
+                            final calendarDay = _calendarData[day];
+                            return _buildDayCell(day, calendarDay, Colors.white, isSelected: true);
+                          },
+                          todayBuilder: (context, day, focusedDay) {
+                            final calendarDay = _calendarData[day];
+                            return _buildDayCell(day, calendarDay, Colors.black, isToday: true);
+                          },
+                        ),
                       ),
-                      selectedDecoration: const BoxDecoration(
-                        color: Color(0xFF1EB955),
-                        shape: BoxShape.circle,
-                      ),
                     ),
-                    headerStyle: const HeaderStyle(
-                      titleCentered: true,
-                      formatButtonVisible: false,
-                      titleTextStyle:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    calendarBuilders: CalendarBuilders(
-                      defaultBuilder: (context, day, focusedDay) {
-                        final calendarDay = _calendarData[day];
-                        return _buildDayCell(day, calendarDay, Colors.black);
-                      },
-                      selectedBuilder: (context, day, focusedDay) {
-                        final calendarDay = _calendarData[day];
-                        return _buildDayCell(day, calendarDay, Colors.white, isSelected: true);
-                      },
-                      todayBuilder: (context, day, focusedDay) {
-                        final calendarDay = _calendarData[day];
-                        return _buildDayCell(day, calendarDay, Colors.black, isToday: true);
-                      },
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildGeneratingPlanMessage() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text(
+              'Generating your personalized plan...',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, color: Colors.black54),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'This may take a few minutes. Please check back soon!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }

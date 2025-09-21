@@ -6,6 +6,7 @@ import '../core/models/workout_model.dart';
 import '../core/models/user_model.dart';
 import '../core/models/nutrition_model.dart';
 import '../core/models/calendar_day_model.dart';
+import '../core/models/chat_message.dart'; // Import ChatMessage model
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -188,5 +189,23 @@ class FirestoreService {
   // Delete a nutrition plan
   Future<void> deleteNutritionPlan(String nutritionId) {
     return userDoc.collection('nutrition').doc(nutritionId).delete();
+  }
+
+  //-- Chat --//
+
+  // Add a new chat message
+  Future<void> addChatMessage(ChatMessage message) {
+    return userDoc.collection('chatMessages').add(message.toJson());
+  }
+
+  // Get chat messages for the current user
+  Stream<List<ChatMessage>> getChatMessages() {
+    return userDoc
+        .collection('chatMessages')
+        .orderBy('timestamp', descending: true) // Order by timestamp descending
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ChatMessage.fromFirestore(doc.data()))
+            .toList());
   }
 }

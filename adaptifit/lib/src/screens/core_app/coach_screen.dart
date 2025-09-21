@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '/src/constants/app_colors.dart';
 import '/src/core/models/chat_message.dart';
 import '/src/services/n8n_service.dart';
+import '/src/services/firestore_service.dart'; // Import FirestoreService
 
 class CoachScreen extends StatefulWidget {
   const CoachScreen({super.key});
@@ -16,30 +17,26 @@ class CoachScreen extends StatefulWidget {
 class _CoachScreenState extends State<CoachScreen> {
   final TextEditingController _textController = TextEditingController();
   final N8nService _n8nService = N8nService();
-  final List<ChatMessage> _messages = [];
+  final FirestoreService _firestoreService = FirestoreService(); // Initialize FirestoreService
+  List<ChatMessage> _messages = []; // Change to non-final
   bool _isLoading = false;
   String? _userName;
 
   @override
   void initState() {
     super.initState();
-    _loadUserNameAndWelcome();
+    _loadUserName(); // Load user name without welcome message
+    _firestoreService.getChatMessages().listen((messages) {
+      setState(() {
+        _messages = messages;
+      });
+    });
   }
 
-  void _loadUserNameAndWelcome() {
+  void _loadUserName() {
     // In a real app, you'd fetch the user's name from Firestore
     // For now, we'll use a placeholder.
     _userName = "Alex";
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          text:
-              'I\'m here to help you achieve your fitness goals. Ask me anything about your workouts, nutrition, or progress!',
-          timestamp: DateTime.now(),
-          isUser: false,
-        ),
-      );
-    });
   }
 
   Future<void> _sendMessage() async {
@@ -50,13 +47,16 @@ class _CoachScreenState extends State<CoachScreen> {
     if (user == null) return; // Should not happen if user is logged in
 
     final userMessage = ChatMessage(
+      senderId: user.uid,
       text: text,
       timestamp: DateTime.now(),
-      isUser: true,
+      messageType: 'user',
     );
 
+    // Add message to Firestore
+    await _firestoreService.addChatMessage(userMessage);
+
     setState(() {
-      _messages.insert(0, userMessage);
       _isLoading = true;
     });
 
@@ -69,13 +69,13 @@ class _CoachScreenState extends State<CoachScreen> {
 
     if (response != null) {
       final coachMessage = ChatMessage(
+        senderId: 'ai_coach', // A special ID for the AI coach
         text: response,
         timestamp: DateTime.now(),
-        isUser: false,
+        messageType: 'ai',
       );
-      setState(() {
-        _messages.insert(0, coachMessage);
-      });
+      // Add AI message to Firestore
+      await _firestoreService.addChatMessage(coachMessage);
     }
 
     setState(() {
@@ -119,34 +119,30 @@ class _CoachScreenState extends State<CoachScreen> {
       ),
       body: Column(
         children: [
+          if (_messages.isEmpty) // Conditional WelcomeBubble
+            WelcomeBubble(
+              title: 'Hi ${_userName ?? 'there'}! 👋',
+              text:
+                  'I\'m here to help you achieve your fitness goals. Ask me anything about your workouts, nutrition, or progress!',
+            ),
           Expanded(
             child: ListView.builder(
               reverse: true, // To show newest messages at the bottom
               padding: const EdgeInsets.all(16.0),
-              itemCount: _messages.length + 1,
+              itemCount: _messages.length + (_isLoading ? 1 : 0), // Add 1 for typing indicator
               itemBuilder: (context, index) {
-                if (index == _messages.length) {
-                  return WelcomeBubble(
-                    title: 'Hi ${_userName ?? 'there'}! 👋',
-                    text: _messages.isNotEmpty
-                        ? _messages.last.text
-                        : 'Loading...',
-                  );
+                if (_isLoading && index == 0) {
+                  return const TypingIndicator();
                 }
-                final message = _messages[index];
+                final message = _messages[index - (_isLoading ? 0 : 0)]; // Adjust index if typing indicator is present
                 return ChatBubble(
                   text: message.text,
                   time: DateFormat('h:mm a').format(message.timestamp),
-                  isUser: message.isUser,
+                  isUser: message.messageType == 'user',
                 );
               },
             ),
           ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              child: TypingIndicator(),
-            ),
           _buildMessageInput(context),
         ],
       ),
