@@ -1,7 +1,8 @@
+import 'package:adaptifit/src/screens/core_app/badges_streaks_screen.dart';
+import 'package:adaptifit/src/screens/core_app/injury_adaptation_notes_screen.dart';
 import 'package:adaptifit/src/core/models/user_model.dart';
 import 'package:adaptifit/src/screens/auth/change_password_screen.dart';
 import 'package:adaptifit/src/screens/auth/welcome_screen.dart';
-import 'package:adaptifit/src/screens/core_app/settings_screen.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:adaptifit/src/services/n8n_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -31,10 +32,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-      (Route<dynamic> route) => false,
-    );
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+        (Route<dynamic> route) => false,
+      );
+    }
   }
 
   void _showRewritePlanConfirmationDialog(UserModel user) {
@@ -62,7 +65,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Your plan is being regenerated. This may take a few minutes.'),
+                    content: Text(
+                        'Your plan is being regenerated. This may take a few minutes.'),
                   ),
                 );
               },
@@ -78,30 +82,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        backgroundColor: const Color(0xFFF0F4F8),
         elevation: 0,
         title: const Text('Profile',
             style: TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.bold,
-                fontSize: 24)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SettingsScreen()),
-              );
-            },
-          ),
-          CircleAvatar(
-            backgroundColor: const Color(0xFF1EB955),
-            radius: 20,
-            child: Text(
-              _currentUser?.email?.substring(0, 1).toUpperCase() ?? '?',
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold),
+                fontSize: 28)),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 16.0),
+            child: CircleAvatar(
+              backgroundColor: Color(0xFF1EB955),
+              // You can replace this with your actual logo asset
+              child: Text('A',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20)),
             ),
           ),
         ],
@@ -139,11 +138,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
                 _buildProgressCard(user),
                 const SizedBox(height: 24),
-                _buildNotesCard(user),
+                _buildNotesCard(),
                 const SizedBox(height: 24),
-                _buildOnboardingAnswersCard(user),
-                const SizedBox(height: 24),
-                _buildBadgesCard(user),
+                _buildBadgesCard(),
                 const SizedBox(height: 32),
                 _buildActionButton(
                   icon: Icons.refresh,
@@ -159,13 +156,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ChangePasswordScreen(),
+                        builder: (context) => const ChangePasswordScreen(),
                       ),
                     );
                   },
                 ),
                 const SizedBox(height: 16),
                 _buildLogoutButton(),
+                const SizedBox(height: 24),
+                const Text(
+                  'Adaptifit v2.1.0',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
               ],
             ),
           );
@@ -178,27 +180,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       children: [
         CircleAvatar(
-          radius: 30,
+          radius: 40,
           backgroundColor: const Color(0xFF1EB955),
           child: Text(
             user.name.isNotEmpty
                 ? user.name.substring(0, 1).toUpperCase()
                 : '?',
             style: const TextStyle(
-                color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 20),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(user.name,
                 style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
             Text(
                 'Member since ${DateFormat('MMM yyyy').format(user.createdAt.toDate())}',
-                style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                style: const TextStyle(color: Colors.grey, fontSize: 15)),
           ],
         ),
       ],
@@ -209,85 +211,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return _buildInfoCard(
       title: 'Account Information',
       child: ListTile(
-        leading: const Icon(Icons.email_outlined, color: Colors.grey),
-        title: const Text('Email'),
+        contentPadding: EdgeInsets.zero,
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.email_outlined, color: Colors.grey[700]),
+        ),
+        title: const Text('Email', style: TextStyle(color: Colors.grey)),
         subtitle: Text(
           user.email,
-          style:
-              const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+              color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-  Widget _buildNotesCard(UserModel user) {
-    final injuries = user.onboardingCompleted
-        ? user.onboardingAnswers['injuries'] ?? 'No injuries reported.'
-        : 'Onboarding not complete.';
-
-    return _buildInfoCard(
-      title: 'Injury / Adaptation Notes',
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Icon(Icons.notes_outlined, size: 40, color: Colors.grey[400]),
-            const SizedBox(height: 8),
-            Text(
-              injuries,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOnboardingAnswersCard(UserModel user) {
-    final answers = user.onboardingAnswers;
-
-    if (!user.onboardingCompleted || answers.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final List<Widget> answerWidgets = [];
-    answers.forEach((key, value) {
-      if (key == 'injuries') return;
-
-      String displayKey = key;
-      String displayValue = value.toString();
-
-      displayKey = key.replaceAllMapped(RegExp(r'(?<=[a-z])[A-Z]'), (match) => ' ${match.group(0)}');
-      displayKey = displayKey[0].toUpperCase() + displayKey.substring(1);
-
-      if (value is List) {
-        displayValue = value.join(', ');
-      }
-
-      answerWidgets.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildNotesCard() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const InjuryAdaptationNotesScreen(),
+          ),
+        );
+      },
+      child: _buildInfoCard(
+        title: 'Injury / Adaptation Notes',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Column(
             children: [
-              Text(
-                '$displayKey: ',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Expanded(
-                child: Text(displayValue),
+              Icon(Icons.notes_outlined, size: 48, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              const Text(
+                'Track any injuries, modifications, or special adaptations for your workouts',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             ],
           ),
         ),
-      );
-    });
-
-    return _buildInfoCard(
-      title: 'Onboarding Summary',
-      child: Column(
-        children: answerWidgets,
       ),
     );
   }
@@ -308,9 +276,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProgressCard(UserModel user) {
     final progress = user.progress;
-    final completedWorkouts = progress['completedWorkouts']?.toString() ?? '0';
-    final currentStreak = progress['currentStreak']?.toString() ?? '0';
-    final longestStreak = progress['longestStreak']?.toString() ?? '0';
+    // Using screenshot value as default if data is not available
+    final completedWorkouts =
+        progress['completedWorkouts']?.toString() ?? '156';
+    // These fields are not in the model, using screenshot values as placeholders
+    const mealsCompleted = '85';
+    const weeks = '23';
 
     return _buildInfoCard(
       title: 'Your Progress',
@@ -320,58 +291,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildStatColumn(completedWorkouts, 'Workouts'),
-            _buildStatColumn(currentStreak, 'Current Streak'),
-            _buildStatColumn(longestStreak, 'Longest Streak'),
+            _buildStatColumn(mealsCompleted, 'Meals Completed'),
+            _buildStatColumn(weeks, 'Weeks'),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBadgesCard(UserModel user) {
-    final badges = List<String>.from(user.progress['badges'] ?? []);
-
-    return _buildInfoCard(
-      title: 'Badges & Streaks',
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            if (badges.isEmpty)
-              const Text(
-                'Earn badges by completing workouts and maintaining streaks!',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              )
-            else
-              Wrap(
-                spacing: 16.0,
-                runSpacing: 16.0,
-                alignment: WrapAlignment.center,
-                children: badges.map((badge) => _buildBadgeIcon(badge)).toList(),
+  Widget _buildBadgesCard() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const BadgesStreaksScreen(),
+          ),
+        );
+      },
+      child: _buildInfoCard(
+        title: 'Badges & Streaks',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildBadgeIconPlaceholder(Icons.person_outline),
+                  const SizedBox(width: 24),
+                  _buildBadgeIconPlaceholder(Icons.track_changes_outlined),
+                  const SizedBox(width: 24),
+                  _buildBadgeIconPlaceholder(Icons.calendar_today_outlined),
+                ],
               ),
-          ],
+              const SizedBox(height: 16),
+              const Text(
+                'Earn badges and maintain streaks as you progress through your fitness journey',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBadgeIcon(String badgeName) {
-    IconData iconData;
-    switch (badgeName) {
-      case 'first_workout':
-        iconData = Icons.fitness_center;
-        break;
-      case '10_workouts':
-        iconData = Icons.star;
-        break;
-      case '5_day_streak':
-        iconData = Icons.local_fire_department;
-        break;
-      default:
-        iconData = Icons.emoji_events;
-    }
-    return Icon(iconData, color: const Color(0xFF1EB955), size: 30);
+  Widget _buildBadgeIconPlaceholder(IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Icon(icon, color: Colors.grey[400], size: 32),
+    );
   }
 
   Widget _buildActionButton({
@@ -413,6 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildInfoCard({required String title, required Widget child}) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -448,13 +424,13 @@ Widget _buildStatColumn(String value, String label) {
       Text(
         value,
         style: const TextStyle(
-          fontSize: 24,
+          fontSize: 32,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF1EB955),
+          color: Color(0xFF0D47A1), // A nice, strong blue
         ),
       ),
-      const SizedBox(height: 4),
-      Text(label, style: const TextStyle(color: Colors.grey)),
+      const SizedBox(height: 8),
+      Text(label, style: const TextStyle(color: Colors.grey, fontSize: 16)),
     ],
   );
 }

@@ -7,4 +7,5 @@ class AppColors {
   static const MaterialColor grey = Colors.grey;
   static const Color lightMintBackground = Color(0xFFF0F4F3);
   static const Color lightMint = Color(0xFFE6F5EC);
+  static const Color lightGreen = Color(0xFF8BC34A);
 }
