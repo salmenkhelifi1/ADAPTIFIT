@@ -276,12 +276,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProgressCard(UserModel user) {
     final progress = user.progress;
-    // Using screenshot value as default if data is not available
-    final completedWorkouts =
-        progress['completedWorkouts']?.toString() ?? '156';
-    // These fields are not in the model, using screenshot values as placeholders
-    const mealsCompleted = '85';
-    const weeks = '23';
+    final completedWorkouts = progress['completedWorkouts']?.toString() ?? '0';
+    final mealsCompleted = progress['mealsCompleted']?.toString() ?? '0';
+    final weeks = progress['weeks']?.toString() ?? '0';
 
     return _buildInfoCard(
       title: 'Your Progress',
