@@ -153,8 +153,7 @@ class _PlanScreenState extends State<PlanScreen> {
                   final user = userSnapshot.data!;
                   final completedWorkouts = user.progress['completedWorkouts'] ?? 0;
                   final totalWorkouts = user.daysPerWeek;
-                  // Dummy data for meals
-                  final completedMeals = 19;
+                  final completedMeals = user.progress['completedMeals'] ?? 0;
                   final totalMeals = totalWorkouts * 3;
 
                   return _buildWeeklyProgressCard(completedWorkouts, totalWorkouts, completedMeals, totalMeals);
@@ -179,7 +178,13 @@ class _PlanScreenState extends State<PlanScreen> {
                     stream: _firestoreService.getCalendarEntry(nextDayString),
                     builder: (context, calendarSnapshot) {
                       if (!calendarSnapshot.hasData) {
-                        return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: _buildNoPlanCard(
+                            title: 'No plan for ${DateFormat('EEEE').format(nextDay)}',
+                            message: 'Your personalized plan for this day is being generated.',
+                          ),
+                        );
                       }
                       final calendarDay = calendarSnapshot.data!;
                       return StreamBuilder<List<WorkoutModel>>(
@@ -214,20 +219,23 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
-  Widget _buildNoPlanCard() {
+  Widget _buildNoPlanCard({
+    String title = "No plan for today",
+    String message = "Your personalized plan is being generated. Please check back in a few minutes.",
+  }) {
     return _buildStyledContainer(
       child: Column(
         children: [
-          const Text(
-            "No plan for today",
-            style: TextStyle(
+          Text(
+            title,
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            "Your personalized plan is being generated. Please check back in a few minutes.",
+          Text(
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.black54),
           ),
