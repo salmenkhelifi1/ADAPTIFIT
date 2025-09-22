@@ -1,4 +1,6 @@
 import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/constants/app_colors.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'sign_in_screen.dart';
@@ -89,7 +91,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF4CAF50),
+      backgroundColor: AppColors.primaryGreen,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -157,7 +159,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   onPressed: _isLoading ? null : _createAccount,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF4CAF50),
+                    foregroundColor: AppColors.primaryGreen,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
@@ -168,7 +170,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           height: 24,
                           width: 24,
                           child: CircularProgressIndicator(
-                            color: Color(0xFF4CAF50),
+                            color: AppColors.primaryGreen,
                           ),
                         )
                       : const Text(

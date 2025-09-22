@@ -20,11 +20,9 @@ class WelcomeScreen extends StatelessWidget {
             children: <Widget>[
               const Spacer(),
               // Placeholder for your actual logo.
-              const Icon(
-                Icons
-                    .terrain, // A placeholder icon that looks like the 'A' logo
-                size: 80,
-                color: AppColors.white,
+              Image.asset(
+                'assets/images/app_icon.png', // Your app logo
+                height: 100, // Adjust size as needed
               ),
               const SizedBox(height: 8),
               const Text(

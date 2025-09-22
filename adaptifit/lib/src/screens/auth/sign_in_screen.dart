@@ -94,7 +94,10 @@ class _SignInScreenState extends State<SignInScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               const Spacer(flex: 2),
-              const Icon(Icons.fitness_center, size: 80, color: Colors.white),
+              Image.asset(
+                'assets/images/app_icon.png', // Your app logo
+                height: 100, // Adjust size as needed
+              ),
               const SizedBox(height: 8),
               const Text(
                 'ADAPTIFIT',
