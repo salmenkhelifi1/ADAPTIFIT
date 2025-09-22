@@ -60,7 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
       // Send once and wait for response
       final response = await http
           .post(
-            Uri.parse('https://n8n.iwilltravelto.com/webhook/ask-ai-assistant'),
+            Uri.parse('https://n8n.iwilltravelto.com/webhook/ask-coach'),
             headers: {"Content-Type": "application/json"},
             body: jsonEncode({"message": userMessage}),
           )

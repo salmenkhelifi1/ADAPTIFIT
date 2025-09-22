@@ -1,3 +1,4 @@
+import 'package:adaptifit/src/utils/message_utils.dart';
 import 'package:adaptifit/src/screens/core_app/badges_streaks_screen.dart';
 import 'package:adaptifit/src/screens/core_app/injury_adaptation_notes_screen.dart';
 import 'package:adaptifit/src/core/models/user_model.dart';
@@ -8,6 +9,7 @@ import 'package:adaptifit/src/services/n8n_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:adaptifit/src/screens/core_app/rewrite_plan_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -38,43 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         (Route<dynamic> route) => false,
       );
     }
-  }
-
-  void _showRewritePlanConfirmationDialog(UserModel user) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Rewrite Plan?'),
-          content: const Text(
-              'Are you sure you want to rewrite your plan? This will generate a new plan based on your onboarding answers.'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Rewrite'),
-              onPressed: () {
-                _n8nService.triggerPlanGeneration(
-                  userId: user.id,
-                  onboardingAnswers: user.onboardingAnswers,
-                );
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                        'Your plan is being regenerated. This may take a few minutes.'),
-                  ),
-                );
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -146,7 +111,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   icon: Icons.refresh,
                   text: 'Rewrite Plan',
                   isPrimary: true,
-                  onPressed: () => _showRewritePlanConfirmationDialog(user),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RewritePlanScreen(
+                          userId: user.id,
+                          onboardingAnswers: user.onboardingAnswers,
+                          n8nService: _n8nService,
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 _buildActionButton(

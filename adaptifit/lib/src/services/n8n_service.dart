@@ -3,10 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class N8nService {
-  // Using one URL for both functions as requested.
-  // Ideally, these would be two separate webhooks for clarity.
-  final String _webhookUrl =
-      'https://n8n.iwilltravelto.com/webhook/ask-ai-assistant';
+  final String _generatePlanWebhookUrl =
+      'https://n8n.iwilltravelto.com/webhook/generate-plan';
+  final String _askCoachWebhookUrl =
+      'https://n8n.iwilltravelto.com/webhook/ask-coach';
 
   /// Triggers the plan generation workflow and waits for the JSON plan response.
   Future<Map<String, dynamic>?> triggerPlanGeneration({
@@ -17,14 +17,13 @@ class N8nService {
       final requestBody = {
         'userId': userId,
         'onboardingAnswers': onboardingAnswers,
-        'action': 'generatePlan', // Added key to differentiate requests
       };
       debugPrint('N8N Service: Sending plan generation request...');
-      debugPrint('N8N Service: URL: $_webhookUrl');
+      debugPrint('N8N Service: URL: $_generatePlanWebhookUrl');
       debugPrint('N8N Service: Body: ${jsonEncode(requestBody)}');
 
       final response = await http.post(
-        Uri.parse(_webhookUrl),
+        Uri.parse(_generatePlanWebhookUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
       );
@@ -57,14 +56,13 @@ class N8nService {
       final requestBody = {
         'userId': userId,
         'prompt': prompt,
-        'action': 'askCoach', // Added key to differentiate requests
       };
       debugPrint('N8N Service: Sending chat message to AI coach...');
-      debugPrint('N8N Service: URL: $_webhookUrl');
+      debugPrint('N8N Service: URL: $_askCoachWebhookUrl');
       debugPrint('N8N Service: Body: ${jsonEncode(requestBody)}');
 
       final response = await http.post(
-        Uri.parse(_webhookUrl),
+        Uri.parse(_askCoachWebhookUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(requestBody),
       );
@@ -88,7 +86,7 @@ class N8nService {
       }
     } catch (e) {
       debugPrint('N8N Service: ERROR during AI coach webhook call: $e');
-      return 'Sorry, I\'m having trouble connecting right now.';
+      return null;
     }
   }
 }
