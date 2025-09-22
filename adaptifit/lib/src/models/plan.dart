@@ -1,38 +1,38 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class PlanModel {
-  final String id;
+class Plan {
+  final String planId;
   final String userId;
   final String title;
   final String goal;
   final String duration;
   final Timestamp createdAt;
-  final Timestamp? updatedAt;
+  final Timestamp updatedAt;
 
-  PlanModel({
-    required this.id,
+  Plan({
+    required this.planId,
     required this.userId,
     required this.title,
     required this.goal,
     required this.duration,
     required this.createdAt,
-    this.updatedAt,
+    required this.updatedAt,
   });
 
-  factory PlanModel.fromFirestore(DocumentSnapshot doc) {
+  factory Plan.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return PlanModel(
-      id: doc.id,
+    return Plan(
+      planId: doc.id,
       userId: data['userId'] ?? '',
       title: data['title'] ?? '',
       goal: data['goal'] ?? '',
       duration: data['duration'] ?? '',
       createdAt: data['createdAt'] ?? Timestamp.now(),
-      updatedAt: data['updatedAt'],
+      updatedAt: data['updatedAt'] ?? Timestamp.now(),
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toFirestore() {
     return {
       'userId': userId,
       'title': title,

@@ -10,6 +10,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:adaptifit/src/screens/core_app/rewrite_plan_screen.dart';
+import 'package:adaptifit/src/core/models/plan_model.dart';
+import 'package:adaptifit/src/screens/core_app/plan_details_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,12 +25,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final N8nService _n8nService = N8nService();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
   Stream<UserModel>? _userStream;
+  Stream<List<PlanModel>>? _plansStream;
 
   @override
   void initState() {
     super.initState();
     if (_currentUser != null) {
       _userStream = _firestoreService.getUser();
+      _plansStream = _firestoreService.getPlans();
     }
   }
 
@@ -101,6 +105,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
                 _buildAccountInfoCard(user),
                 const SizedBox(height: 24),
+                _buildPlansCard(),
+                const SizedBox(height: 24),
                 _buildProgressCard(user),
                 const SizedBox(height: 24),
                 _buildNotesCard(),
@@ -171,8 +177,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(user.name,
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                style: const TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text(
                 'Member since ${DateFormat('MMM yyyy').format(user.createdAt.toDate())}',
@@ -203,6 +209,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
+    );
+  }
+
+  Widget _buildPlansCard() {
+    return StreamBuilder<List<PlanModel>>(
+      stream: _plansStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildInfoCard(
+              title: 'Your Plans', child: const Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError) {
+          return _buildInfoCard(
+              title: 'Your Plans', child: Text('Error: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildInfoCard(
+              title: 'Your Plans', child: const Text('No plans found.'));
+        }
+
+        final plans = snapshot.data!;
+        return _buildInfoCard(
+          title: 'Your Plans',
+          child: ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: plans.length,
+            itemBuilder: (context, index) {
+              final plan = plans[index];
+              return ListTile(
+                title: Text(plan.title),
+                subtitle: Text(plan.goal),
+                trailing: Text(plan.duration),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PlanDetailsScreen(plan: plan),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
