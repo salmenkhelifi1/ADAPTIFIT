@@ -35,7 +35,6 @@ class _OnboardingExperienceScreenState
   Widget build(BuildContext context) {
     print('Building OnboardingExperienceScreen');
     return Scaffold(
-      backgroundColor: AppColors.lightMintBackground,
       appBar: AppBar(
         backgroundColor: AppColors.lightMintBackground,
         elevation: 0,

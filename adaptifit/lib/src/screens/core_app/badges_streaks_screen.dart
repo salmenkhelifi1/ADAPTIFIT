@@ -6,7 +6,6 @@ class BadgesStreaksScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE0F2F1), // Light mint green background
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -20,7 +19,7 @@ class BadgesStreaksScreen extends StatelessWidget {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withAlpha(127),
                   ),
                 ),
                 Container(
@@ -31,7 +30,7 @@ class BadgesStreaksScreen extends StatelessWidget {
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withAlpha(12),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -57,7 +56,7 @@ class BadgesStreaksScreen extends StatelessWidget {
                   right: 0,
                   child: Icon(
                     Icons.show_chart,
-                    color: Colors.grey.withOpacity(0.7),
+                    color: Colors.grey.withAlpha(178),
                   ),
                 ),
                  Positioned(
@@ -66,7 +65,7 @@ class BadgesStreaksScreen extends StatelessWidget {
                   child: Icon(
                     Icons.access_time,
                     size: 20,
-                    color: Colors.grey.withOpacity(0.7),
+                    color: Colors.grey.withAlpha(178),
                   ),
                 ),
               ],

@@ -91,7 +91,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primaryGreen,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

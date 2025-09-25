@@ -1,4 +1,3 @@
-import 'package:adaptifit/src/utils/message_utils.dart';
 import 'package:adaptifit/src/screens/core_app/badges_streaks_screen.dart';
 import 'package:adaptifit/src/screens/core_app/injury_adaptation_notes_screen.dart';
 import 'package:adaptifit/src/core/models/user_model.dart';
@@ -12,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:adaptifit/src/screens/core_app/rewrite_plan_screen.dart';
 import 'package:adaptifit/src/core/models/plan_model.dart';
 import 'package:adaptifit/src/screens/core_app/plan_details_screen.dart';
+import 'package:adaptifit/src/constants/app_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -49,7 +49,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFFF0F4F8),
@@ -177,8 +176,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(user.name,
-                style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold)),
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text(
                 'Member since ${DateFormat('MMM yyyy').format(user.createdAt.toDate())}',
@@ -218,7 +217,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildInfoCard(
-              title: 'Your Plans', child: const Center(child: CircularProgressIndicator()));
+              title: 'Your Plans',
+              child: const Center(child: CircularProgressIndicator()));
         }
         if (snapshot.hasError) {
           return _buildInfoCard(
@@ -420,7 +420,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withAlpha(25),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, 3),

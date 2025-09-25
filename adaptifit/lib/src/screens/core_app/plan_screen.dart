@@ -1,13 +1,14 @@
 import 'package:adaptifit/src/core/models/calendar_day_model.dart';
 import 'package:adaptifit/src/core/models/nutrition_model.dart';
-import 'package:adaptifit/src/core/models/plan_model.dart';
+import 'package:adaptifit/src/constants/app_colors.dart';
+
 import 'package:adaptifit/src/core/models/user_model.dart';
 import 'package:adaptifit/src/core/models/workout_model.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
-import '/src/screens/core_app/calendar_screen.dart'; // Import the calendar screen
-import '/src/screens/core_app/workout_overview_screen.dart';
-import '/src/screens/core_app/nutrition_overview_screen.dart';
+import 'package:adaptifit/src/screens/core_app/calendar_screen.dart'; // Import the calendar screen
+import 'package:adaptifit/src/screens/core_app/workout_overview_screen.dart';
+import 'package:adaptifit/src/screens/core_app/nutrition_overview_screen.dart';
 import 'package:intl/intl.dart';
 
 class PlanScreen extends StatefulWidget {
@@ -26,7 +27,6 @@ class _PlanScreenState extends State<PlanScreen> {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     return Scaffold(
-      backgroundColor: screenBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
@@ -89,12 +89,15 @@ class _PlanScreenState extends State<PlanScreen> {
                   return StreamBuilder<CalendarDayModel>(
                     stream: _firestoreService.getCalendarEntry(today),
                     builder: (context, calendarSnapshot) {
-                      if (calendarSnapshot.connectionState == ConnectionState.waiting) {
+                      if (calendarSnapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
 
                       // Check if onboarding is complete but plan is not yet generated
-                      if (user != null && user.onboardingAnswers.isNotEmpty && !calendarSnapshot.hasData) {
+                      if (user != null &&
+                          user.onboardingAnswers.isNotEmpty &&
+                          !calendarSnapshot.hasData) {
                         return _buildGeneratingPlanCard();
                       }
 
@@ -108,19 +111,27 @@ class _PlanScreenState extends State<PlanScreen> {
                         children: [
                           if (calendarDay.hasWorkout)
                             StreamBuilder<List<WorkoutModel>>(
-                              stream: _firestoreService.getWorkouts(calendarDay.planId),
+                              stream: _firestoreService
+                                  .getWorkouts(calendarDay.planId),
                               builder: (context, workoutSnapshot) {
                                 if (!workoutSnapshot.hasData) {
                                   return const SizedBox.shrink();
                                 }
-                                final workout = workoutSnapshot.data!.firstWhere(
-                                    (w) => w.id == calendarDay.workoutId, orElse: () => WorkoutModel(id: '', name: 'Workout not found', exercises: []));
+                                final workout = workoutSnapshot.data!
+                                    .firstWhere(
+                                        (w) => w.id == calendarDay.workoutId,
+                                        orElse: () => WorkoutModel(
+                                            id: '',
+                                            name: 'Workout not found',
+                                            exercises: []));
                                 return GestureDetector(
                                   onTap: () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => WorkoutOverviewScreen(workoutId: workout.id),
+                                        builder: (context) =>
+                                            WorkoutOverviewScreen(
+                                                workoutId: workout.id),
                                       ),
                                     );
                                   },
@@ -136,14 +147,28 @@ class _PlanScreenState extends State<PlanScreen> {
                                 if (!nutritionSnapshot.hasData) {
                                   return const SizedBox.shrink();
                                 }
-                                final nutrition = nutritionSnapshot.data!.firstWhere(
-                                    (n) => calendarDay.nutritionIds.contains(n.nutritionId), orElse: () => NutritionModel(nutritionId: '', mealPlanName: 'Not Found', day: '', meals: [], calories: 0, protein: 0, carbs: 0, fat: 0));
+                                final nutrition = nutritionSnapshot.data!
+                                    .firstWhere(
+                                        (n) => calendarDay.nutritionIds
+                                            .contains(n.nutritionId),
+                                        orElse: () => NutritionModel(
+                                            nutritionId: '',
+                                            mealPlanName: 'Not Found',
+                                            day: '',
+                                            meals: [],
+                                            calories: 0,
+                                            protein: 0,
+                                            carbs: 0,
+                                            fat: 0));
                                 return GestureDetector(
                                   onTap: () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => NutritionOverviewScreen(nutritionId: nutrition.nutritionId),
+                                        builder: (context) =>
+                                            NutritionOverviewScreen(
+                                                nutritionId:
+                                                    nutrition.nutritionId),
                                       ),
                                     );
                                   },
@@ -164,15 +189,18 @@ class _PlanScreenState extends State<PlanScreen> {
                 stream: _firestoreService.getUser(),
                 builder: (context, userSnapshot) {
                   if (!userSnapshot.hasData) {
-                    return _buildWeeklyProgressCard(0, 7, 19, 21); // Show dummy data while loading
+                    return _buildWeeklyProgressCard(
+                        0, 7, 19, 21); // Show dummy data while loading
                   }
                   final user = userSnapshot.data!;
-                  final completedWorkouts = user.progress['completedWorkouts'] ?? 0;
+                  final completedWorkouts =
+                      user.progress['completedWorkouts'] ?? 0;
                   final totalWorkouts = user.daysPerWeek;
                   final completedMeals = user.progress['completedMeals'] ?? 0;
                   final totalMeals = totalWorkouts * 3;
 
-                  return _buildWeeklyProgressCard(completedWorkouts, totalWorkouts, completedMeals, totalMeals);
+                  return _buildWeeklyProgressCard(completedWorkouts,
+                      totalWorkouts, completedMeals, totalMeals);
                 },
               ),
               const SizedBox(height: 24),
@@ -189,7 +217,8 @@ class _PlanScreenState extends State<PlanScreen> {
                 itemCount: 3,
                 itemBuilder: (context, index) {
                   final nextDay = DateTime.now().add(Duration(days: index + 1));
-                  final nextDayString = DateFormat('yyyy-MM-dd').format(nextDay);
+                  final nextDayString =
+                      DateFormat('yyyy-MM-dd').format(nextDay);
                   return StreamBuilder<CalendarDayModel>(
                     stream: _firestoreService.getCalendarEntry(nextDayString),
                     builder: (context, calendarSnapshot) {
@@ -197,24 +226,41 @@ class _PlanScreenState extends State<PlanScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16.0),
                           child: _buildNoPlanCard(
-                            title: 'No plan for ${DateFormat('EEEE').format(nextDay)}',
-                            message: 'Your personalized plan for this day is being generated.',
+                            title:
+                                'No plan for ${DateFormat('EEEE').format(nextDay)}',
+                            message:
+                                'Your personalized plan for this day is being generated.',
                           ),
                         );
                       }
                       final calendarDay = calendarSnapshot.data!;
                       return StreamBuilder<List<WorkoutModel>>(
-                        stream: _firestoreService.getWorkouts(calendarDay.planId),
+                        stream:
+                            _firestoreService.getWorkouts(calendarDay.planId),
                         builder: (context, workoutSnapshot) {
                           final workout = workoutSnapshot.data?.firstWhere(
-                              (w) => w.id == calendarDay.workoutId, orElse: () => WorkoutModel(id: '', name: 'Rest Day', exercises: []));
+                              (w) => w.id == calendarDay.workoutId,
+                              orElse: () => WorkoutModel(
+                                  id: '', name: 'Rest Day', exercises: []));
                           return StreamBuilder<List<NutritionModel>>(
                             stream: _firestoreService.getNutritionPlans(),
                             builder: (context, nutritionSnapshot) {
-                              final nutrition = nutritionSnapshot.data?.firstWhere(
-                                  (n) => calendarDay.nutritionIds.contains(n.nutritionId), orElse: () => NutritionModel(nutritionId: '', mealPlanName: 'No Nutrition', day: '', meals: [], calories: 0, protein: 0, carbs: 0, fat: 0));
+                              final nutrition = nutritionSnapshot.data
+                                  ?.firstWhere(
+                                      (n) => calendarDay.nutritionIds
+                                          .contains(n.nutritionId),
+                                      orElse: () => NutritionModel(
+                                          nutritionId: '',
+                                          mealPlanName: 'No Nutrition',
+                                          day: '',
+                                          meals: [],
+                                          calories: 0,
+                                          protein: 0,
+                                          carbs: 0,
+                                          fat: 0));
                               return _buildUpcomingPlanCard(
-                                dayAndDate: DateFormat('E, MMM d').format(nextDay),
+                                dayAndDate:
+                                    DateFormat('E, MMM d').format(nextDay),
                                 emoji: '💪',
                                 workout: workout?.name ?? '...',
                                 breakfast: nutrition?.meals.first ?? '...',
@@ -237,7 +283,8 @@ class _PlanScreenState extends State<PlanScreen> {
 
   Widget _buildNoPlanCard({
     String title = "No plan for today",
-    String message = "Your personalized plan is being generated. Please check back in a few minutes.",
+    String message =
+        "Your personalized plan is being generated. Please check back in a few minutes.",
   }) {
     return _buildStyledContainer(
       child: Column(
@@ -300,7 +347,7 @@ class _PlanScreenState extends State<PlanScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
+            color: Colors.grey.withAlpha(20),
             spreadRadius: 2,
             blurRadius: 10,
             offset: const Offset(0, 4),
@@ -322,7 +369,7 @@ class _PlanScreenState extends State<PlanScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: primaryGreen.withOpacity(0.15),
+                  color: primaryGreen.withAlpha(38),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.fitness_center, color: primaryGreen),
@@ -391,7 +438,7 @@ class _PlanScreenState extends State<PlanScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: primaryBlue.withOpacity(0.1),
+                  color: primaryBlue.withAlpha(25),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.apple, color: primaryBlue),
@@ -449,7 +496,8 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
-  Widget _buildWeeklyProgressCard(int completedWorkouts, int totalWorkouts, int completedMeals, int totalMeals) {
+  Widget _buildWeeklyProgressCard(int completedWorkouts, int totalWorkouts,
+      int completedMeals, int totalMeals) {
     return _buildStyledContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,7 +533,9 @@ class _PlanScreenState extends State<PlanScreen> {
                   SizedBox(
                     width: 120,
                     child: LinearProgressIndicator(
-                      value: totalWorkouts == 0 ? 0 : completedWorkouts / totalWorkouts,
+                      value: totalWorkouts == 0
+                          ? 0
+                          : completedWorkouts / totalWorkouts,
                       backgroundColor: Colors.grey.shade300,
                       valueColor: const AlwaysStoppedAnimation<Color>(
                           Color(0xFF1EB955)),

@@ -28,7 +28,6 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F0F8),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF0F0F8),
         elevation: 0,
@@ -138,7 +137,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
+            color: Colors.grey.withAlpha(20),
             spreadRadius: 1,
             blurRadius: 10,
           ),
@@ -158,7 +157,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withAlpha(25),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.fitness_center, color: Colors.green),
@@ -240,7 +239,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withAlpha(25),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.apple, color: Colors.blue),
@@ -291,7 +290,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(meal.split(':')[0] + ':', style: const TextStyle(color: Colors.black54)),
+                        Text('${meal.split(':')[0]}:', style: const TextStyle(color: Colors.black54)),
                         Text(meal.split(':')[1]),
                       ],
                     ),

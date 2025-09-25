@@ -36,6 +36,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
+        if (!mounted) return;
         showSnackBarMessage(context, 'No user logged in.', isError: true);
         return;
       }
@@ -51,6 +52,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       );
 
       await user.updatePassword(_newPasswordController.text);
+      if (!mounted) return;
       showSnackBarMessage(context, 'Password changed successfully!');
       if (mounted) {
         Navigator.of(context).pop();
@@ -64,8 +66,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       } else {
         message = 'Failed to change password: ${e.message}';
       }
+      if (!mounted) return;
       showSnackBarMessage(context, message, isError: true);
     } catch (e) {
+      if (!mounted) return;
       showSnackBarMessage(context, 'An unexpected error occurred.', isError: true);
     } finally {
       if (mounted) {
@@ -79,7 +83,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEAF6F6), // Light teal background
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -90,7 +93,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               borderRadius: BorderRadius.circular(20.0),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withAlpha(25),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

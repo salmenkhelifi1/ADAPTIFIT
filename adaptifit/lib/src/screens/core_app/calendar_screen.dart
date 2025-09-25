@@ -4,7 +4,7 @@ import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'daily_plan_detail_screen.dart'; // Import the new detail screen
+import 'package:adaptifit/src/screens/core_app/daily_plan_detail_screen.dart'; // Import the new detail screen
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -28,7 +28,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF0F4F8),
         elevation: 0,
@@ -86,7 +85,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Colors.grey.withAlpha(25),
                             spreadRadius: 2,
                             blurRadius: 10,
                           ),

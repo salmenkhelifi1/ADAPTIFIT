@@ -1,9 +1,9 @@
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'create_account_screen.dart';
-import 'forgot_password_screen.dart';
-import '/src/screens/core_app/main_scaffold.dart';
+import 'package:adaptifit/src/screens/auth/create_account_screen.dart';
+import 'package:adaptifit/src/screens/auth/forgot_password_screen.dart';
+
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -26,35 +26,35 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _signIn() async {
-    print('SignInScreen: _signIn called');
+    
     // Show a loading indicator
     setState(() {
       _isLoading = true;
     });
 
     try {
-      print('SignInScreen: Attempting to sign in with email and password.');
+      
       // Use the controllers to get the email and password
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      print('SignInScreen: Sign in successful.');
+      
 
       // We check if the widget is still mounted before touching the context.
       if (!mounted) {
-        print('SignInScreen: Widget not mounted, returning.');
+        
         return;
       }
 
-      print('SignInScreen: Navigating to AuthGate.');
+      
       // This will trigger the AuthGate to rebuild and navigate to the correct screen.
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const AuthGate()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
-      print('SignInScreen: FirebaseAuthException: ${e.code} - ${e.message}');
+      
       // Handle different authentication errors
       String message = 'An error occurred. Please check your credentials.';
       if (e.code == 'user-not-found' || e.code == 'invalid-email') {
@@ -71,7 +71,7 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
       );
     } finally {
-      print('SignInScreen: _signIn finished.');
+      
       // Hide the loading indicator
       if (mounted) {
         setState(() {
@@ -86,7 +86,6 @@ class _SignInScreenState extends State<SignInScreen> {
     const primaryGreen = Color(0xFF1EB955);
 
     return Scaffold(
-      backgroundColor: primaryGreen,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),

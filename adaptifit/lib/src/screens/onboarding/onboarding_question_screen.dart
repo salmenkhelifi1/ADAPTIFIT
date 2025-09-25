@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/core_app/main_scaffold.dart';
-import '/src/services/auth_service.dart';
+import 'package:adaptifit/src/services/auth_service.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:adaptifit/src/services/n8n_service.dart';
 
@@ -261,18 +261,17 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
           return (answer['style']?.isNotEmpty ?? false) ||
               (answer['macros']?.isNotEmpty ?? false) ||
               (answer['custom']?.isNotEmpty ?? false);
-        default:
-          return false;
+        
       }
     }
 
     return Scaffold(
-      backgroundColor: AppColors.lightMintBackground,
+      backgroundColor: AppColors.neutralGray,
       appBar: AppBar(
-        backgroundColor: AppColors.lightMintBackground,
+        backgroundColor: AppColors.neutralGray,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.black),
+          icon: const Icon(Icons.arrow_back, color: AppColors.darkText),
           onPressed: _previousQuestion,
         ),
       ),
@@ -314,7 +313,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                     isNextEnabled() && !_isLoading ? _nextQuestion : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
-                  disabledBackgroundColor: AppColors.grey.shade400,
+                  disabledBackgroundColor: AppColors.timestampGray,
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
@@ -375,7 +374,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                 border: Border.all(
                   color: isSelected
                       ? AppColors.primaryGreen
-                      : AppColors.grey.shade300,
+                      : AppColors.timestampGray,
                   width: 1.5,
                 ),
               ),
@@ -383,7 +382,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                 option,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: AppColors.black,
+                  color: AppColors.darkText,
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
@@ -411,7 +410,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.grey.shade300, width: 1.5),
+          borderSide: BorderSide(color: AppColors.timestampGray, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -439,7 +438,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.grey.shade300, width: 1.5),
+          borderSide: BorderSide(color: AppColors.timestampGray, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

@@ -50,7 +50,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: AppColors.primaryGreen,
-        unselectedItemColor: AppColors.grey,
+        unselectedItemColor: AppColors.timestampGray,
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
       ),
