@@ -69,7 +69,7 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
                 SizedBox(height: 8),
                 Text(
                   "Adaptifit creates a personalized fitness and nutrition plan just for you",
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                  style: TextStyle(color: AppColors.white70, fontSize: 16),
                 ),
               ],
             ),
@@ -99,13 +99,14 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.darkText,
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       "You can choose more than one goal",
-                      style: TextStyle(fontSize: 14, color: AppColors.grey),
+                      style: TextStyle(
+                          fontSize: 14, color: AppColors.timestampGray),
                     ),
                     const SizedBox(height: 20),
                     Expanded(
@@ -139,7 +140,7 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primaryGreen,
             foregroundColor: AppColors.white,
-            disabledBackgroundColor: AppColors.grey.shade300,
+            disabledBackgroundColor: AppColors.timestampGray,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(30),
@@ -174,11 +175,11 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE8F5E9) : Colors.transparent,
+          color: isSelected ? AppColors.lightGreen : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color:
-                isSelected ? AppColors.primaryGreen : AppColors.grey.shade300,
+                isSelected ? AppColors.primaryGreen : AppColors.timestampGray,
             width: 1.5,
           ),
         ),
@@ -190,7 +191,7 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppColors.primaryGreen : Colors.black87,
+                color: isSelected ? AppColors.primaryGreen : AppColors.darkText,
               ),
             ),
             Container(
@@ -201,7 +202,7 @@ class _OnboardingGoalsScreenState extends State<OnboardingGoalsScreen> {
                 border: Border.all(
                   color: isSelected
                       ? AppColors.primaryGreen
-                      : AppColors.grey.shade400,
+                      : AppColors.timestampGray,
                   width: 2,
                 ),
               ),

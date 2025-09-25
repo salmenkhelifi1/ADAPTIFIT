@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 import 'package:adaptifit/src/constants/app_colors.dart';
-import 'package:adaptifit/src/core/models/chat_message.dart';
+import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/services/n8n_service.dart';
 import 'package:adaptifit/src/services/firestore_service.dart'; // Import FirestoreService
 

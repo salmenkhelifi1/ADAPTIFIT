@@ -34,7 +34,7 @@ class PasswordResetConfirmationScreen extends StatelessWidget {
               const Text(
                 'We have sent a password reset link to the email address you provided.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 16),
+                style: TextStyle(color: AppColors.white70, fontSize: 16),
               ),
               const SizedBox(height: 50),
               ElevatedButton(

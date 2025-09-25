@@ -1,12 +1,6 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../core/models/plan_model.dart';
-import '../core/models/workout_model.dart';
-import '../core/models/user_model.dart';
-import '../core/models/nutrition_model.dart';
-import '../core/models/calendar_day_model.dart';
-import '../core/models/chat_message.dart'; // Import ChatMessage model
+import 'package:adaptifit/src/core/models/models.dart'; // Import ChatMessage model
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -48,12 +42,14 @@ class FirestoreService {
       updatedAt: Timestamp.now(),
       progress: {},
     );
-    return _db.collection('users').doc(uid).set(user.toMap());
+    return _db.collection('users').doc(uid).set(user.toFirestore());
   }
 
   // Get user model
   Stream<UserModel> getUser() {
-    return userDoc.snapshots().map((snapshot) => UserModel.fromFirestore(snapshot));
+    return userDoc
+        .snapshots()
+        .map((snapshot) => UserModel.fromFirestore(snapshot));
   }
 
   // Update onboarding answers
@@ -68,23 +64,19 @@ class FirestoreService {
   //-- Plans --//
 
   // Get all plans for the current user
-  Stream<List<PlanModel>> getPlans() {
-    return userDoc
-        .collection('plans')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => PlanModel.fromFirestore(doc))
-            .toList());
+  Stream<List<Plan>> getPlans() {
+    return userDoc.collection('plans').snapshots().map((snapshot) =>
+        snapshot.docs.map((doc) => Plan.fromFirestore(doc)).toList());
   }
 
   // Add a new plan
-  Future<DocumentReference> addPlan(PlanModel plan) {
-    return userDoc.collection('plans').add(plan.toMap());
+  Future<DocumentReference> addPlan(Plan plan) {
+    return userDoc.collection('plans').add(plan.toFirestore());
   }
 
   // Update a plan
-  Future<void> updatePlan(String planId, PlanModel plan) {
-    return userDoc.collection('plans').doc(planId).update(plan.toMap());
+  Future<void> updatePlan(String planId, Plan plan) {
+    return userDoc.collection('plans').doc(planId).update(plan.toFirestore());
   }
 
   // Delete a plan
@@ -95,34 +87,33 @@ class FirestoreService {
   //-- Workouts --//
 
   // Get all workouts for a specific plan
-  Stream<List<WorkoutModel>> getWorkouts(String planId) {
+  Stream<List<Workout>> getWorkouts(String planId) {
     return userDoc
         .collection('plans')
         .doc(planId)
         .collection('workouts')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => WorkoutModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Workout.fromFirestore(doc)).toList());
   }
 
   // Add a new workout to a plan
-  Future<DocumentReference> addWorkout(String planId, WorkoutModel workout) {
+  Future<DocumentReference> addWorkout(String planId, Workout workout) {
     return userDoc
         .collection('plans')
         .doc(planId)
         .collection('workouts')
-        .add(workout.toMap());
+        .add(workout.toFirestore());
   }
 
   // Update a workout
-  Future<void> updateWorkout(String planId, String workoutId, WorkoutModel workout) {
+  Future<void> updateWorkout(String planId, String workoutId, Workout workout) {
     return userDoc
         .collection('plans')
         .doc(planId)
         .collection('workouts')
         .doc(workoutId)
-        .update(workout.toMap());
+        .update(workout.toFirestore());
   }
 
   // Delete a workout
@@ -138,52 +129,44 @@ class FirestoreService {
   //-- Calendar --//
 
   // Get calendar entry for a specific date
-  Stream<CalendarDayModel> getCalendarEntry(String date) {
+  Stream<Calendar> getCalendarEntry(String date) {
     return userDoc
         .collection('calendar')
         .doc(date)
         .snapshots()
-        .map((snapshot) => CalendarDayModel.fromFirestore(snapshot));
+        .map((snapshot) => Calendar.fromFirestore(snapshot));
   }
 
   // Get all calendar entries
-  Stream<List<CalendarDayModel>> getCalendarEntries() {
-    return userDoc
-        .collection('calendar')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CalendarDayModel.fromFirestore(doc))
-            .toList());
+  Stream<List<Calendar>> getCalendarEntries() {
+    return userDoc.collection('calendar').snapshots().map((snapshot) =>
+        snapshot.docs.map((doc) => Calendar.fromFirestore(doc)).toList());
   }
 
   // Set or update a calendar entry
-  Future<void> setCalendarEntry(String date, CalendarDayModel data) {
-    return userDoc.collection('calendar').doc(date).set(data.toMap());
+  Future<void> setCalendarEntry(String date, Calendar data) {
+    return userDoc.collection('calendar').doc(date).set(data.toFirestore());
   }
 
   //-- Nutrition --//
 
   // Get all nutrition plans
-  Stream<List<NutritionModel>> getNutritionPlans() {
-    return userDoc
-        .collection('nutrition')
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => NutritionModel.fromFirestore(doc))
-            .toList());
+  Stream<List<Nutrition>> getNutritionPlans() {
+    return userDoc.collection('nutrition').snapshots().map((snapshot) =>
+        snapshot.docs.map((doc) => Nutrition.fromFirestore(doc)).toList());
   }
 
   // Add a nutrition plan
-  Future<DocumentReference> addNutritionPlan(NutritionModel nutrition) {
-    return userDoc.collection('nutrition').add(nutrition.toMap());
+  Future<DocumentReference> addNutritionPlan(Nutrition nutrition) {
+    return userDoc.collection('nutrition').add(nutrition.toFirestore());
   }
 
   // Update a nutrition plan
-  Future<void> updateNutritionPlan(String nutritionId, NutritionModel nutrition) {
+  Future<void> updateNutritionPlan(String nutritionId, Nutrition nutrition) {
     return userDoc
         .collection('nutrition')
         .doc(nutritionId)
-        .update(nutrition.toMap());
+        .update(nutrition.toFirestore());
   }
 
   // Delete a nutrition plan

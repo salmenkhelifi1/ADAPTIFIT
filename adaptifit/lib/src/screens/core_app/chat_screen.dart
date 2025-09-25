@@ -1,7 +1,6 @@
-import 'dart:async';
-import 'dart:convert';
+import 'package:adaptifit/src/core/models/models.dart';
+import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -13,8 +12,15 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<Map<String, String>> _messages = [];
+  final FirestoreService _firestoreService = FirestoreService();
+  Stream<List<ChatMessage>>? _chatStream;
   bool _isWaitingForAI = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _chatStream = _firestoreService.getChatMessages();
+  }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -28,67 +34,27 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _typeWriter(String text) async {
-    String currentText = "";
-    setState(() {
-      _messages.add({"role": "ai", "text": currentText});
-    });
-
-    for (int i = 0; i < text.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 20));
-      currentText += text[i];
-      setState(() {
-        _messages[_messages.length - 1]["text"] = currentText;
-      });
-      _scrollToBottom();
-    }
-  }
-
   Future<void> _sendMessage() async {
     if (_controller.text.trim().isEmpty || _isWaitingForAI) return;
 
     final userMessage = _controller.text.trim();
     _controller.clear();
 
+    final message = ChatMessage(
+      senderId: _firestoreService.currentUser!.uid,
+      text: userMessage,
+      timestamp: DateTime.now(),
+      messageType: 'user',
+    );
+
+    await _firestoreService.addChatMessage(message);
+
     setState(() {
-      _messages.add({"role": "user", "text": userMessage});
       _isWaitingForAI = true;
     });
     _scrollToBottom();
 
-    try {
-      // Send once and wait for response
-      final response = await http
-          .post(
-            Uri.parse('https://adaptifit.app.n8n.cloud/webhook/ask-coach'),
-            headers: {"Content-Type": "application/json"},
-            body: jsonEncode({"message": userMessage}),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        // Handle JSON array response
-        String aiText = "AI did not respond.";
-        if (data is List && data.isNotEmpty) {
-          aiText = data[0]['output'] ?? "AI did not respond.";
-        }
-
-        await _typeWriter(aiText);
-      } else {
-        await _typeWriter("Error: ${response.statusCode}");
-      }
-    } on TimeoutException {
-      await _typeWriter("AI took too long to respond. Please try again.");
-    } catch (e) {
-      await _typeWriter("Error: $e");
-    } finally {
-      setState(() {
-        _isWaitingForAI = false;
-      });
-      _scrollToBottom();
-    }
+    // AI response is handled by the n8n service, which will then post back to firestore
   }
 
   @override
@@ -101,45 +67,58 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: _messages.length + (_isWaitingForAI ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (_isWaitingForAI && index == _messages.length) {
-                  return Container(
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 5,
-                      horizontal: 10,
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text('AI is typing...'),
-                    ),
-                  );
+            child: StreamBuilder<List<ChatMessage>>(
+              stream: _chatStream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('No messages yet.'));
                 }
 
-                final message = _messages[index];
-                final isUser = message['role'] == 'user';
-                return Container(
-                  alignment:
-                      isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 5,
-                    horizontal: 10,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[200] : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(message['text']!),
-                  ),
+                final messages = snapshot.data!;
+                return ListView.builder(
+                  controller: _scrollController,
+                  itemCount: messages.length + (_isWaitingForAI ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (_isWaitingForAI && index == messages.length) {
+                      return Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 5,
+                          horizontal: 10,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text('AI is typing...'),
+                        ),
+                      );
+                    }
+
+                    final message = messages[index];
+                    final isUser = message.messageType == 'user';
+                    return Container(
+                      alignment:
+                          isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 5,
+                        horizontal: 10,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isUser ? Colors.blue[200] : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(message.text),
+                      ),
+                    );
+                  },
                 );
               },
             ),

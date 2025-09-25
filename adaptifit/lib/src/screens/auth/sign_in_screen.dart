@@ -1,9 +1,9 @@
+import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/screens/auth/create_account_screen.dart';
 import 'package:adaptifit/src/screens/auth/forgot_password_screen.dart';
-
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -26,35 +26,29 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _signIn() async {
-    
     // Show a loading indicator
     setState(() {
       _isLoading = true;
     });
 
     try {
-      
       // Use the controllers to get the email and password
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      
 
       // We check if the widget is still mounted before touching the context.
       if (!mounted) {
-        
         return;
       }
 
-      
       // This will trigger the AuthGate to rebuild and navigate to the correct screen.
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const AuthGate()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
-      
       // Handle different authentication errors
       String message = 'An error occurred. Please check your credentials.';
       if (e.code == 'user-not-found' || e.code == 'invalid-email') {
@@ -67,11 +61,10 @@ class _SignInScreenState extends State<SignInScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.redAccent,
         ),
       );
     } finally {
-      
       // Hide the loading indicator
       if (mounted) {
         setState(() {
@@ -83,8 +76,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryGreen = Color(0xFF1EB955);
-
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -102,7 +93,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 'ADAPTIFIT',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.5,
@@ -113,7 +104,7 @@ class _SignInScreenState extends State<SignInScreen> {
                 'Sign In',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -139,7 +130,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   'Forgot Password?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: AppColors.white70,
                     decoration: TextDecoration.underline,
                   ),
                 ),
@@ -148,8 +139,8 @@ class _SignInScreenState extends State<SignInScreen> {
               ElevatedButton(
                 onPressed: _isLoading ? null : _signIn,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: primaryGreen,
+                  backgroundColor: AppColors.white,
+                  foregroundColor: AppColors.primaryGreen,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
@@ -157,7 +148,8 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryGreen),
                       )
                     : const Text(
                         'Sign In',
@@ -179,12 +171,12 @@ class _SignInScreenState extends State<SignInScreen> {
                   children: [
                     Text(
                       "Don't have an account? ",
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppColors.white70),
                     ),
                     Text(
                       'Sign Up',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.white,
                         fontWeight: FontWeight.bold,
                         decoration: TextDecoration.underline,
                       ),
@@ -212,7 +204,7 @@ class _SignInScreenState extends State<SignInScreen> {
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,

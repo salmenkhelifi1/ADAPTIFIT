@@ -39,7 +39,7 @@ class _OnboardingExperienceScreenState
         backgroundColor: AppColors.lightMintBackground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.black),
+          icon: const Icon(Icons.arrow_back, color: AppColors.darkText),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -63,7 +63,8 @@ class _OnboardingExperienceScreenState
                     const SizedBox(height: 8),
                     const Text(
                       'This helps us tailor your workouts so they feel just right—challenging but doable.',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                      style: TextStyle(
+                          fontSize: 16, color: AppColors.subtitleGray),
                     ),
                     const SizedBox(height: 40),
                     ..._experienceLevels.map((level) {
@@ -91,7 +92,7 @@ class _OnboardingExperienceScreenState
                               border: Border.all(
                                 color: isSelected
                                     ? AppColors.primaryGreen
-                                    : AppColors.grey.shade300,
+                                    : AppColors.timestampGray,
                                 width: 1.5,
                               ),
                             ),
@@ -101,7 +102,7 @@ class _OnboardingExperienceScreenState
                               style: TextStyle(
                                 color: isSelected
                                     ? AppColors.white
-                                    : AppColors.black,
+                                    : AppColors.darkText,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -129,7 +130,7 @@ class _OnboardingExperienceScreenState
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
-                  disabledBackgroundColor: AppColors.grey.shade400,
+                  disabledBackgroundColor: AppColors.timestampGray,
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),

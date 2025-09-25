@@ -67,7 +67,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppColors.redAccent,
           ),
         );
       }
@@ -95,7 +95,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -112,7 +112,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   'Create Account',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.white,
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
@@ -157,7 +157,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _createAccount,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: AppColors.white,
                     foregroundColor: AppColors.primaryGreen,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -184,7 +184,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   children: [
                     const Text(
                       "Already have an account? ",
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppColors.white70),
                     ),
                     GestureDetector(
                       onTap: () {
@@ -198,7 +198,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       child: const Text(
                         'Sign In',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.white,
                           fontWeight: FontWeight.bold,
                           decoration: TextDecoration.underline,
                         ),
@@ -228,7 +228,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,

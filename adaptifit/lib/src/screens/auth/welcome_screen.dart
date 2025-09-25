@@ -39,7 +39,7 @@ class WelcomeScreen extends StatelessWidget {
                 'Smarter fitness. Better you.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: AppColors.white70,
                   fontSize: 18,
                 ),
               ),
@@ -75,8 +75,8 @@ class WelcomeScreen extends StatelessWidget {
                   );
                 },
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white, width: 2),
-                  foregroundColor: Colors.white,
+                  side: const BorderSide(color: AppColors.white, width: 2),
+                  foregroundColor: AppColors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),

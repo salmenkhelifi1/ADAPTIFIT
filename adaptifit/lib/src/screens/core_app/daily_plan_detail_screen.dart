@@ -1,6 +1,4 @@
-import 'package:adaptifit/src/core/models/calendar_day_model.dart';
-import 'package:adaptifit/src/core/models/nutrition_model.dart';
-import 'package:adaptifit/src/core/models/workout_model.dart';
+import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -16,7 +14,7 @@ class DailyPlanDetailScreen extends StatefulWidget {
 
 class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  late Stream<CalendarDayModel> _calendarDayStream;
+  late Stream<Calendar> _calendarDayStream;
 
   @override
   void initState() {
@@ -42,7 +40,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
         ),
         centerTitle: true,
       ),
-      body: StreamBuilder<CalendarDayModel>(
+      body: StreamBuilder<Calendar>(
         stream: _calendarDayStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -63,7 +61,8 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
               children: [
                 Text(
                   DateFormat('EEEE').format(widget.date), // e.g., "Wednesday"
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -73,27 +72,42 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                 ),
                 const SizedBox(height: 24),
                 if (calendarDay.hasWorkout)
-                  StreamBuilder<List<WorkoutModel>>(
-                    stream: _firestoreService.getWorkouts(calendarDay.planId),
+                  StreamBuilder<List<Workout>>(
+                    stream: _firestoreService.getWorkouts(calendarDay.planId!),
                     builder: (context, workoutSnapshot) {
                       if (!workoutSnapshot.hasData) {
                         return const SizedBox.shrink();
                       }
                       final workout = workoutSnapshot.data!.firstWhere(
-                          (w) => w.id == calendarDay.workoutId, orElse: () => WorkoutModel(id: '', name: 'Workout not found', exercises: []));
+                          (w) => w.workoutId == calendarDay.workoutId,
+                          orElse: () => Workout(
+                              workoutId: '',
+                              userId: '',
+                              name: 'Workout not found',
+                              exercises: []));
                       return _buildWorkoutPlanCard(workout);
                     },
                   ),
                 const SizedBox(height: 20),
                 if (calendarDay.hasNutrition)
-                  StreamBuilder<List<NutritionModel>>(
+                  StreamBuilder<List<Nutrition>>(
                     stream: _firestoreService.getNutritionPlans(),
                     builder: (context, nutritionSnapshot) {
                       if (!nutritionSnapshot.hasData) {
                         return const SizedBox.shrink();
                       }
                       final nutrition = nutritionSnapshot.data!.firstWhere(
-                          (n) => calendarDay.nutritionIds.contains(n.nutritionId), orElse: () => NutritionModel(nutritionId: '', mealPlanName: 'Not Found', day: '', meals: [], calories: 0, protein: 0, carbs: 0, fat: 0));
+                          (n) =>
+                              calendarDay.nutritionIds.contains(n.nutritionId),
+                          orElse: () => Nutrition(
+                              nutritionId: '',
+                              userId: '',
+                              mealType: 'Not Found',
+                              items: [],
+                              totalCalories: 0,
+                              totalProtein: 0,
+                              totalCarbs: 0,
+                              totalFat: 0));
                       return _buildNutritionPlanCard(nutrition);
                     },
                   ),
@@ -147,7 +161,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
     );
   }
 
-  Widget _buildWorkoutPlanCard(WorkoutModel workout) {
+  Widget _buildWorkoutPlanCard(Workout workout) {
     return _buildStyledCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,8 +183,8 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                   children: [
                     Text(
                       workout.name,
-                      style:
-                          const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     const Text(
@@ -188,15 +202,15 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
             style: TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 12),
-          const Row(
+          Row(
             children: [
-              Icon(Icons.timer_outlined, color: Colors.black54, size: 20),
-              SizedBox(width: 8),
-              Text('45 minutes', style: TextStyle(color: Colors.black54)),
-              SizedBox(width: 24),
-              Icon(Icons.format_list_numbered, color: Colors.black54, size: 20),
-              SizedBox(width: 8),
-              Text('8 exercises', style: TextStyle(color: Colors.black54)),
+              const Icon(Icons.timer_outlined, color: Colors.black54, size: 20),
+              const SizedBox(width: 8),
+              const Text('45 minutes', style: TextStyle(color: Colors.black54)),
+              const SizedBox(width: 24),
+              const Icon(Icons.format_list_numbered, color: Colors.black54, size: 20),
+              const SizedBox(width: 8),
+              Text('${workout.exercises.length} exercises', style: const TextStyle(color: Colors.black54)),
             ],
           ),
           const SizedBox(height: 20),
@@ -229,7 +243,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
     );
   }
 
-  Widget _buildNutritionPlanCard(NutritionModel nutrition) {
+  Widget _buildNutritionPlanCard(Nutrition nutrition) {
     return _buildStyledCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,14 +264,14 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      nutrition.mealPlanName,
-                      style:
-                          const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      nutrition.mealType,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Low Carb Focus · 2,100 cal',
-                      style: TextStyle(color: Colors.black54),
+                    Text(
+                      'Low Carb Focus · ${nutrition.totalCalories} cal',
+                      style: const TextStyle(color: Colors.black54),
                     ),
                   ],
                 ),
@@ -284,19 +298,21 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                if (nutrition.meals.isNotEmpty)
-                  ...nutrition.meals.map((meal) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('${meal.split(':')[0]}:', style: const TextStyle(color: Colors.black54)),
-                        Text(meal.split(':')[1]),
-                      ],
-                    ),
-                  )),
-                if (nutrition.meals.isEmpty)
-                  const Text('No meals planned for today.', style: TextStyle(color: Colors.black54)),
+                if (nutrition.items.isNotEmpty)
+                  ...nutrition.items.map((item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('${item.name}:',
+                                style: const TextStyle(color: Colors.black54)),
+                            Text(item.name),
+                          ],
+                        ),
+                      )),
+                if (nutrition.items.isEmpty)
+                  const Text('No meals planned for today.',
+                      style: TextStyle(color: Colors.black54)),
               ],
             ),
           ),
@@ -306,18 +322,20 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
             children: [
               Column(
                 children: [
-                  Text('${nutrition.calories}',
-                      style:
-                          const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const Text('Calories', style: TextStyle(color: Colors.black54)),
+                  Text('${nutrition.totalCalories}',
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text('Calories',
+                      style: TextStyle(color: Colors.black54)),
                 ],
               ),
               Column(
                 children: [
-                  Text('${nutrition.protein}g',
-                      style:
-                          const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const Text('Protein', style: TextStyle(color: Colors.black54)),
+                  Text('${nutrition.totalProtein}g',
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text('Protein',
+                      style: TextStyle(color: Colors.black54)),
                 ],
               ),
             ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:adaptifit/src/constants/app_colors.dart';
 
 class BadgesStreaksScreen extends StatelessWidget {
   const BadgesStreaksScreen({super.key});
@@ -19,7 +20,7 @@ class BadgesStreaksScreen extends StatelessWidget {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withAlpha(127),
+                    color: AppColors.white.withAlpha(127),
                   ),
                 ),
                 Container(
@@ -27,10 +28,10 @@ class BadgesStreaksScreen extends StatelessWidget {
                   height: 100,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white,
+                    color: AppColors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withAlpha(12),
+                        color: AppColors.black.withAlpha(12),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -39,11 +40,11 @@ class BadgesStreaksScreen extends StatelessWidget {
                   child: const Center(
                     child: CircleAvatar(
                       radius: 35,
-                      backgroundColor: Color(0xFF1EB955),
+                      backgroundColor: AppColors.primaryGreen,
                       child: Text(
                         'A',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.white,
                           fontSize: 30,
                           fontWeight: FontWeight.bold,
                         ),
@@ -56,16 +57,16 @@ class BadgesStreaksScreen extends StatelessWidget {
                   right: 0,
                   child: Icon(
                     Icons.show_chart,
-                    color: Colors.grey.withAlpha(178),
+                    color: AppColors.grey.withAlpha(178),
                   ),
                 ),
-                 Positioned(
+                Positioned(
                   bottom: 15,
                   left: 10,
                   child: Icon(
                     Icons.access_time,
                     size: 20,
-                    color: Colors.grey.withAlpha(178),
+                    color: AppColors.grey.withAlpha(178),
                   ),
                 ),
               ],
@@ -76,7 +77,7 @@ class BadgesStreaksScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: AppColors.darkText,
               ),
             ),
             const SizedBox(height: 16),
@@ -85,24 +86,26 @@ class BadgesStreaksScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 18,
-                color: Colors.black54,
+                color: AppColors.subtitleGray,
                 height: 1.5,
               ),
             ),
             const Spacer(flex: 3),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: OutlinedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 55),
-                  side: const BorderSide(color: Color(0xFF1EB955), width: 2),
+                  side:
+                      const BorderSide(color: AppColors.primaryGreen, width: 2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  foregroundColor: const Color(0xFF1EB955),
+                  foregroundColor: AppColors.primaryGreen,
                 ),
                 child: const Text(
                   'Close',

@@ -1,5 +1,4 @@
-import 'package:adaptifit/src/core/models/calendar_day_model.dart';
-import 'package:adaptifit/src/core/models/user_model.dart';
+import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -17,7 +16,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<DateTime, CalendarDayModel> _calendarData = {};
+  Map<DateTime, Calendar> _calendarData = {};
 
   @override
   void initState() {
@@ -50,7 +49,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }
           final user = userSnapshot.data;
 
-          return StreamBuilder<List<CalendarDayModel>>(
+          return StreamBuilder<List<Calendar>>(
             stream: _firestoreService.getCalendarEntries(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -58,7 +57,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               }
 
               // Check if onboarding is complete but plan is not yet generated
-              if (user != null && user.onboardingAnswers.isNotEmpty && !snapshot.hasData) {
+              if (user != null &&
+                  user.onboardingAnswers.isNotEmpty &&
+                  !snapshot.hasData) {
                 return _buildGeneratingPlanMessage();
               }
 
@@ -125,21 +126,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         headerStyle: const HeaderStyle(
                           titleCentered: true,
                           formatButtonVisible: false,
-                          titleTextStyle:
-                              TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          titleTextStyle: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         calendarBuilders: CalendarBuilders(
                           defaultBuilder: (context, day, focusedDay) {
                             final calendarDay = _calendarData[day];
-                            return _buildDayCell(day, calendarDay, Colors.black);
+                            return _buildDayCell(
+                                day, calendarDay, Colors.black);
                           },
                           selectedBuilder: (context, day, focusedDay) {
                             final calendarDay = _calendarData[day];
-                            return _buildDayCell(day, calendarDay, Colors.white, isSelected: true);
+                            return _buildDayCell(day, calendarDay, Colors.white,
+                                isSelected: true);
                           },
                           todayBuilder: (context, day, focusedDay) {
                             final calendarDay = _calendarData[day];
-                            return _buildDayCell(day, calendarDay, Colors.black, isToday: true);
+                            return _buildDayCell(day, calendarDay, Colors.black,
+                                isToday: true);
                           },
                         ),
                       ),
@@ -180,9 +184,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildDayCell(DateTime day, CalendarDayModel? calendarDay,
-      Color textColor, {bool isSelected = false, bool isToday = false}) {
-
+  Widget _buildDayCell(
+      DateTime day, Calendar? calendarDay, Color textColor,
+      {bool isSelected = false, bool isToday = false}) {
     Color todayColor = isToday ? const Color(0xFFD4EDDA) : Colors.transparent;
 
     return Container(
@@ -203,7 +207,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ? Colors.white
                       : (isToday ? Colors.black : textColor)),
             ),
-            if (calendarDay != null && (calendarDay.hasWorkout || calendarDay.hasNutrition))
+            if (calendarDay != null &&
+                (calendarDay.hasWorkout || calendarDay.hasNutrition))
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

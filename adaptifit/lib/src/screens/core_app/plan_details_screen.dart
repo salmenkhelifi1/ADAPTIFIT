@@ -1,10 +1,11 @@
-import 'package:adaptifit/src/core/models/workout_model.dart';
+import 'package:adaptifit/src/constants/app_colors.dart';
+import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
-import 'package:adaptifit/src/core/models/plan_model.dart';
+import 'package:adaptifit/src/core/models/plan.dart';
 
 class PlanDetailsScreen extends StatefulWidget {
-  final PlanModel plan;
+  final Plan plan;
 
   const PlanDetailsScreen({Key? key, required this.plan}) : super(key: key);
 
@@ -14,21 +15,22 @@ class PlanDetailsScreen extends StatefulWidget {
 
 class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  Stream<List<WorkoutModel>>? _workoutsStream;
+  Stream<List<Workout>>? _workoutsStream;
 
   @override
   void initState() {
     super.initState();
-    _workoutsStream = _firestoreService.getWorkouts(widget.plan.id);
+    _workoutsStream = _firestoreService.getWorkouts(widget.plan.planId);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.plan.title),
+        title: Text(widget.plan.planName),
+        backgroundColor: AppColors.primaryGreen,
       ),
-      body: StreamBuilder<List<WorkoutModel>>(
+      body: StreamBuilder<List<Workout>>(
         stream: _workoutsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -38,7 +40,8 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No workouts found for this plan.'));
+            return const Center(
+                child: Text('No workouts found for this plan.'));
           }
 
           final workouts = snapshot.data!;
@@ -48,6 +51,7 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
               final workout = workouts[index];
               return Card(
                 margin: const EdgeInsets.all(8.0),
+                color: AppColors.white,
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -58,14 +62,19 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: AppColors.darkText,
                         ),
                       ),
                       const SizedBox(height: 8),
                       ...workout.exercises.map((exercise) {
                         return ListTile(
-                          title: Text(exercise['name'] ?? ''),
+                          title: Text(exercise.name,
+                              style:
+                                  const TextStyle(color: AppColors.darkText)),
                           subtitle: Text(
-                              'Sets: ${exercise['sets']}, Reps: ${exercise['reps']}'),
+                              'Sets: ${exercise.sets}, Reps: ${exercise.reps}',
+                              style: const TextStyle(
+                                  color: AppColors.subtitleGray)),
                         );
                       }).toList(),
                     ],

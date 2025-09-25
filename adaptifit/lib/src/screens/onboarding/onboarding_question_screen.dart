@@ -96,14 +96,24 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       subtitle: 'This helps us gauge your starting point.',
       type: QuestionType.singleChoice,
       answerKey: 'activityLevel',
-      options: ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'],
+      options: [
+        'Sedentary',
+        'Lightly Active',
+        'Moderately Active',
+        'Very Active'
+      ],
     ),
     OnboardingQuestion(
       title: 'How much time can you dedicate to each workout session?',
       subtitle: 'This will help us tailor the length of your workouts.',
       type: QuestionType.singleChoice,
       answerKey: 'timePerSession',
-      options: ['15-30 minutes', '30-45 minutes', '45-60 minutes', '60+ minutes'],
+      options: [
+        '15-30 minutes',
+        '30-45 minutes',
+        '45-60 minutes',
+        '60+ minutes'
+      ],
     ),
     OnboardingQuestion(
       title: 'Do you have access to a gym or will you be working out at home?',
@@ -114,10 +124,16 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     ),
     OnboardingQuestion(
       title: 'What is your preferred workout split?',
-      subtitle: 'A workout split is how you organize your workouts throughout the week.',
+      subtitle:
+          'A workout split is how you organize your workouts throughout the week.',
       type: QuestionType.singleChoice,
       answerKey: 'workoutSplit',
-      options: ['Full Body', 'Upper/Lower', 'Push/Pull/Legs', 'Body Part Split'],
+      options: [
+        'Full Body',
+        'Upper/Lower',
+        'Push/Pull/Legs',
+        'Body Part Split'
+      ],
     ),
     OnboardingQuestion(
       title: 'What equipment do you have access to?',
@@ -261,7 +277,6 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
           return (answer['style']?.isNotEmpty ?? false) ||
               (answer['macros']?.isNotEmpty ?? false) ||
               (answer['custom']?.isNotEmpty ?? false);
-        
       }
     }
 
@@ -297,7 +312,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                       currentQuestion.subtitle,
                       style: const TextStyle(
                         fontSize: 16,
-                        color: Colors.black54,
+                        color: AppColors.subtitleGray,
                       ),
                     ),
                     const SizedBox(height: 40),
@@ -320,7 +335,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                   ),
                 ),
                 child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const CircularProgressIndicator(color: AppColors.white)
                     : Text(
                         _currentQuestionIndex == _questions.length - 1
                             ? 'Generate My Plan'
@@ -516,7 +531,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
             child: const Text(
               'Skip Nutrition',
               style: TextStyle(
-                color: Colors.black54,
+                color: AppColors.subtitleGray,
                 decoration: TextDecoration.underline,
                 fontSize: 16,
               ),
