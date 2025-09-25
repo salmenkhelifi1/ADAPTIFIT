@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 
 class N8nService {
   final String _generatePlanWebhookUrl =
-      'https://n8n.iwilltravelto.com/webhook/generate-plan';
+      'https://adaptifit.app.n8n.cloud/webhook/generate-plan';
   final String _askCoachWebhookUrl =
-      'https://n8n.iwilltravelto.com/webhook/ask-coach';
+      'https://adaptifit.app.n8n.cloud/webhook/ask-coach';
 
   /// Triggers the plan generation workflow and waits for the JSON plan response.
   Future<Map<String, dynamic>?> triggerPlanGeneration({
