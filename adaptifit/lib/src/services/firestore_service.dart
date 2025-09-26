@@ -1,13 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:adaptifit/src/core/models/models.dart'; // Import ChatMessage model
+import 'package:adaptifit/src/core/models/models.dart';
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // Get current user
   User? get currentUser => FirebaseAuth.instance.currentUser;
-
   // Get user document
   DocumentReference<Map<String, dynamic>> get userDoc {
     final user = currentUser;
@@ -69,19 +69,15 @@ class FirestoreService {
         snapshot.docs.map((doc) => Plan.fromFirestore(doc)).toList());
   }
 
-  // Add a new plan
-  Future<DocumentReference> addPlan(Plan plan) {
-    return userDoc.collection('plans').add(plan.toFirestore());
-  }
-
-  // Update a plan
-  Future<void> updatePlan(String planId, Plan plan) {
-    return userDoc.collection('plans').doc(planId).update(plan.toFirestore());
-  }
-
-  // Delete a plan
-  Future<void> deletePlan(String planId) {
-    return userDoc.collection('plans').doc(planId).delete();
+  // Get a single workout
+  Stream<Workout> getWorkout(String planId, String workoutId) {
+    return userDoc
+        .collection('plans')
+        .doc(planId)
+        .collection('workouts')
+        .doc(workoutId)
+        .snapshots()
+        .map((doc) => Workout.fromFirestore(doc));
   }
 
   //-- Workouts --//
@@ -93,37 +89,9 @@ class FirestoreService {
         .doc(planId)
         .collection('workouts')
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => Workout.fromFirestore(doc)).toList());
-  }
-
-  // Add a new workout to a plan
-  Future<DocumentReference> addWorkout(String planId, Workout workout) {
-    return userDoc
-        .collection('plans')
-        .doc(planId)
-        .collection('workouts')
-        .add(workout.toFirestore());
-  }
-
-  // Update a workout
-  Future<void> updateWorkout(String planId, String workoutId, Workout workout) {
-    return userDoc
-        .collection('plans')
-        .doc(planId)
-        .collection('workouts')
-        .doc(workoutId)
-        .update(workout.toFirestore());
-  }
-
-  // Delete a workout
-  Future<void> deleteWorkout(String planId, String workoutId) {
-    return userDoc
-        .collection('plans')
-        .doc(planId)
-        .collection('workouts')
-        .doc(workoutId)
-        .delete();
+        .map((snapshot) {
+      return snapshot.docs.map((doc) => Workout.fromFirestore(doc)).toList();
+    });
   }
 
   //-- Calendar --//

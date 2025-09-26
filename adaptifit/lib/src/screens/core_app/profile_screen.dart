@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:adaptifit/src/screens/core_app/rewrite_plan_screen.dart';
 import 'package:adaptifit/src/core/models/plan.dart';
-import 'package:adaptifit/src/screens/core_app/plan_details_screen.dart';
+import 'package:adaptifit/src/screens/core_app/workout_overview_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -242,18 +242,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
             itemCount: plans.length,
             itemBuilder: (context, index) {
               final plan = plans[index];
-              return ListTile(
+              return ExpansionTile(
                 title: Text(plan.planName),
-                subtitle: Text(plan.planType),
-                trailing: Text(plan.duration),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PlanDetailsScreen(plan: plan),
-                    ),
-                  );
-                },
+                subtitle: Text('${plan.planType} - ${plan.duration}'),
+                children: [
+                  StreamBuilder<List<Workout>>(
+                    stream: _firestoreService.getWorkouts(plan.planId),
+                    builder: (context, workoutSnapshot) {
+                      if (workoutSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (workoutSnapshot.hasError) {
+                        return const ListTile(
+                            title: Text('Error loading workouts'));
+                      }
+                      if (!workoutSnapshot.hasData ||
+                          workoutSnapshot.data!.isEmpty) {
+                        return const ListTile(title: Text('No workouts found.'));
+                      }
+                      final workouts = workoutSnapshot.data!;
+                      return Column(
+                        children: workouts.map((workout) {
+                          return ListTile(
+                            title: Text(workout.name),
+                            subtitle: Text(workout.day ?? ''),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => WorkoutOverviewScreen(
+                                    planId: plan.planId,
+                                    workoutId: workout.workoutId,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+                ],
               );
             },
           ),

@@ -53,7 +53,7 @@ class WelcomeScreen extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.white,
+                  backgroundColor: AppColors.primaryGreen,
                   foregroundColor: AppColors.primaryGreen,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(

@@ -2,7 +2,6 @@ import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 
 import 'package:adaptifit/src/core/models/user.dart';
-import 'package:adaptifit/src/core/models/workout.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/screens/core_app/calendar_screen.dart'; // Import the calendar screen
@@ -127,7 +126,8 @@ class _PlanScreenState extends State<PlanScreen> {
                           return _buildGeneratingPlanCard();
                         }
 
-                        if (!calendarSnapshot.hasData) {
+                        if (!calendarSnapshot.hasData ||
+                            calendarSnapshot.data == null) {
                           return _buildNoPlanCard();
                         }
 
@@ -135,14 +135,25 @@ class _PlanScreenState extends State<PlanScreen> {
 
                         return Column(
                           children: [
-                            if (calendarDay.hasWorkout)
+                            if (calendarDay.hasWorkout &&
+                                calendarDay.planId != null)
                               StreamBuilder<List<Workout>>(
                                 stream: _firestoreService
                                     .getWorkouts(calendarDay.planId!),
                                 builder: (context, workoutSnapshot) {
-                                  if (!workoutSnapshot.hasData) {
-                                    return const SizedBox.shrink();
+                                  if (workoutSnapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center(
+                                        child: CircularProgressIndicator());
                                   }
+                                  if (!workoutSnapshot.hasData ||
+                                      workoutSnapshot.data!.isEmpty) {
+                                    return _buildNoPlanCard(
+                                        title: "Workout not found",
+                                        message:
+                                            "Today's workout could not be loaded.");
+                                  }
+
                                   final workout = workoutSnapshot.data!
                                       .firstWhere(
                                           (w) =>
@@ -153,13 +164,23 @@ class _PlanScreenState extends State<PlanScreen> {
                                               userId: '',
                                               name: 'Workout not found',
                                               exercises: []));
+
+                                  if (workout.name == 'Workout not found') {
+                                    return _buildNoPlanCard(
+                                        title: "Workout not found",
+                                        message:
+                                            "Today's workout could not be loaded.");
+                                  }
+
                                   return GestureDetector(
                                     onTap: () {
+                                      debugPrint("Navigating to WorkoutOverviewScreen with planId: ${workout.planId} and workoutId: ${workout.workoutId}");
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) =>
                                               WorkoutOverviewScreen(
+                                                  planId: workout.planId!,
                                                   workoutId: workout.workoutId),
                                         ),
                                       );
@@ -173,8 +194,15 @@ class _PlanScreenState extends State<PlanScreen> {
                               StreamBuilder<List<Nutrition>>(
                                 stream: _firestoreService.getNutritionPlans(),
                                 builder: (context, nutritionSnapshot) {
-                                  if (!nutritionSnapshot.hasData) {
-                                    return const SizedBox.shrink();
+                                  if (nutritionSnapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center(
+                                        child: CircularProgressIndicator());
+                                  }
+                                  if (!nutritionSnapshot.hasData ||
+                                      nutritionSnapshot.data!.isEmpty) {
+                                    return const SizedBox
+                                        .shrink(); // Or a 'no nutrition' card
                                   }
                                   final nutrition = nutritionSnapshot.data!
                                       .firstWhere(
@@ -259,21 +287,22 @@ class _PlanScreenState extends State<PlanScreen> {
                   return StreamBuilder<Calendar>(
                     stream: _firestoreService.getCalendarEntry(nextDayString),
                     builder: (context, calendarSnapshot) {
-                      if (!calendarSnapshot.hasData) {
+                      if (!calendarSnapshot.hasData ||
+                          calendarSnapshot.data == null) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16.0),
                           child: _buildNoPlanCard(
                             title:
                                 'No plan for ${DateFormat('EEEE').format(nextDay)}',
-                            message:
-                                'Your personalized plan for this day is being generated.',
+                            message: 'Enjoy your day off or check back later!',
                           ),
                         );
                       }
                       final calendarDay = calendarSnapshot.data!;
                       return StreamBuilder<List<Workout>>(
-                        stream:
-                            _firestoreService.getWorkouts(calendarDay.planId!),
+                        stream: (calendarDay.planId != null)
+                            ? _firestoreService.getWorkouts(calendarDay.planId!)
+                            : Stream.value([]),
                         builder: (context, workoutSnapshot) {
                           final workout = workoutSnapshot.data?.firstWhere(
                               (w) => w.workoutId == calendarDay.workoutId,
@@ -303,11 +332,15 @@ class _PlanScreenState extends State<PlanScreen> {
                                 child: _buildUpcomingPlanCard(
                                   dayAndDate:
                                       DateFormat('E, MMM d').format(nextDay),
-                                  emoji: '💪',
+                                  emoji:
+                                      workout?.name == 'Rest Day' ? '😴' : '💪',
                                   workout: workout?.name ?? '...',
-                                  breakfast:
-                                      nutrition?.items.first.name ?? '...',
-                                  dinner: nutrition?.items.last.name ?? '...',
+                                  breakfast: nutrition?.items.isNotEmpty == true
+                                      ? nutrition!.items.first.name
+                                      : '...',
+                                  dinner: (nutrition?.items.length ?? 0) > 1
+                                      ? nutrition!.items.last.name
+                                      : '...',
                                 ),
                               );
                             },

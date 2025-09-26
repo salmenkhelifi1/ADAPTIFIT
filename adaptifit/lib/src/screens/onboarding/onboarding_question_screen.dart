@@ -1,13 +1,9 @@
+import 'package:adaptifit/src/screens/onboarding/summary_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/context/onboarding_provider.dart';
-import 'package:adaptifit/src/screens/core_app/main_scaffold.dart';
-import 'package:adaptifit/src/services/auth_service.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
-import 'package:adaptifit/src/services/n8n_service.dart';
 
 enum QuestionType {
   singleChoice,
@@ -43,104 +39,96 @@ class OnboardingQuestionScreen extends StatefulWidget {
 }
 
 class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
-  // Services
-  final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
-  final N8nService _n8nService = N8nService();
-
-  // State
   int _currentQuestionIndex = 0;
-  bool _isLoading = false;
 
   final List<OnboardingQuestion> _questions = [
+    // 1. Fitness goal
     OnboardingQuestion(
-      title: 'How many days per week can you realistically work out?',
-      subtitle:
-          'Be honest with yourself—consistency matters more than perfection. We’ll design your plan around your schedule.',
+      title: 'What is your primary fitness goal?',
+      subtitle: 'This will help us tailor your plan to your desired outcome.',
       type: QuestionType.singleChoice,
-      answerKey: 'workoutFrequency',
-      options: ['1', '2', '3', '4', '5', '6', '7'],
+      answerKey: 'fitnessGoal',
+      options: ['Build Muscle', 'Lose Fat', 'Improve Strength', 'General Fitness'],
     ),
+    // 2. Experience level
     OnboardingQuestion(
-      title: 'How long would you like your personalized plan to last?',
-      subtitle:
-          'Most people choose 30, 60, or 90 days — but you can set any timeline that fits your goals.',
-      type: QuestionType.textInput,
-      answerKey: 'planDuration',
-      placeholders: ['Enter number of days'],
+      title: 'What is your fitness experience level?',
+      subtitle: 'This helps us set the right intensity and complexity for your workouts.',
+      type: QuestionType.singleChoice,
+      answerKey: 'experienceLevel',
+      options: ['Beginner', 'Intermediate', 'Advanced'],
     ),
+    // 3. Injuries/limitations
     OnboardingQuestion(
       title: 'Do you have any injuries or physical limitations?',
-      subtitle:
-          'This helps us adapt your plan so you can train safely and effectively.',
+      subtitle: 'This helps us adapt your plan so you can train safely and effectively.',
       type: QuestionType.textArea,
       answerKey: 'injuries',
-      placeholders: [
-        'e.g., shoulder impingement, knee pain, lower back issues',
-      ],
+      placeholders: ['e.g., shoulder impingement, knee pain, lower back issues'],
     ),
+    // 4. Weekly workout frequency
     OnboardingQuestion(
-      title: 'Do you follow a specific diet or have nutrition preferences?',
-      subtitle:
-          'This helps us personalize your plan around your lifestyle. Add your diet style, macros, or calories if you’d like. If you skip, we’ll create only your workout plan and hide nutrition sections in the app.',
-      type: QuestionType.diet,
-      answerKey: 'diet',
-      placeholders: [
-        'e.g., high protein, vegetarian, keto, plant-based',
-        '2000 kcal or macros in grams',
-        'Enter custom dietary preferences',
-      ],
+      title: 'How many days per week can you realistically work out?',
+      subtitle: 'Be honest with yourself—consistency matters more than perfection. We’ll design your plan around your schedule.',
+      type: QuestionType.singleChoice,
+      answerKey: 'workoutFrequency',
+      options: ['1-2 days', '3-4 days', '5-6 days', 'Every day'],
     ),
+    // 5. Plan duration
+    OnboardingQuestion(
+      title: 'How long would you like your personalized plan to last?',
+      subtitle: 'Choose a duration that fits your commitment level.',
+      type: QuestionType.singleChoice,
+      answerKey: 'planDuration',
+      options: ['30 days', '60 days', '90 days'],
+    ),
+    // 6. Activity level
     OnboardingQuestion(
       title: 'What is your current activity level?',
       subtitle: 'This helps us gauge your starting point.',
       type: QuestionType.singleChoice,
       answerKey: 'activityLevel',
-      options: [
-        'Sedentary',
-        'Lightly Active',
-        'Moderately Active',
-        'Very Active'
-      ],
+      options: ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'],
     ),
+    // 7. Diet type/preferences
+    OnboardingQuestion(
+      title: 'Do you follow a specific diet or have nutrition preferences?',
+      subtitle: 'This helps us personalize your plan around your lifestyle. Add your diet style, macros, or calories if you’d like. If you skip, we’ll create only your workout plan and hide nutrition sections in the app.',
+      type: QuestionType.diet,
+      answerKey: 'diet',
+      placeholders: ['e.g., high protein, vegetarian, keto, plant-based', '2000 kcal or macros in grams', 'Enter custom dietary preferences'],
+    ),
+    // 8. Time per session
     OnboardingQuestion(
       title: 'How much time can you dedicate to each workout session?',
       subtitle: 'This will help us tailor the length of your workouts.',
       type: QuestionType.singleChoice,
       answerKey: 'timePerSession',
-      options: [
-        '15-30 minutes',
-        '30-45 minutes',
-        '45-60 minutes',
-        '60+ minutes'
-      ],
+      options: ['15-30 minutes', '30-45 minutes', '45-60 minutes', '60+ minutes'],
     ),
+    // 9. Access to gym/home equipment
     OnboardingQuestion(
       title: 'Do you have access to a gym or will you be working out at home?',
       subtitle: 'This determines the type of exercises in your plan.',
       type: QuestionType.singleChoice,
       answerKey: 'gymAccess',
-      options: ['Gym', 'Home', 'Both'],
+      options: ['Gym', 'Home'],
     ),
-    OnboardingQuestion(
-      title: 'What is your preferred workout split?',
-      subtitle:
-          'A workout split is how you organize your workouts throughout the week.',
-      type: QuestionType.singleChoice,
-      answerKey: 'workoutSplit',
-      options: [
-        'Full Body',
-        'Upper/Lower',
-        'Push/Pull/Legs',
-        'Body Part Split'
-      ],
-    ),
+    // 10. What equipment do you have? (Conditional)
     OnboardingQuestion(
       title: 'What equipment do you have access to?',
       subtitle: 'List all the equipment you have available for your workouts.',
       type: QuestionType.textArea,
       answerKey: 'equipmentList',
       placeholders: ['e.g., dumbbells, resistance bands, treadmill, etc.'],
+    ),
+    // 11. Preferred workout split
+    OnboardingQuestion(
+      title: 'What is your preferred workout split?',
+      subtitle: 'A workout split is how you organize your workouts throughout the week.',
+      type: QuestionType.singleChoice,
+      answerKey: 'workoutSplit',
+      options: ['Full Body', 'Upper/Lower', 'Push/Pull/Legs', 'Body Part Split'],
     ),
   ];
 
@@ -157,7 +145,6 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     _dietMacrosController = TextEditingController();
     _dietCustomController = TextEditingController();
 
-    // Load initial answer for the first question
     _loadAnswerForCurrentQuestion();
   }
 
@@ -170,46 +157,46 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     super.dispose();
   }
 
-  void _finishOnboarding() async {
-    setState(() => _isLoading = true);
-
-    final onboardingProvider =
-        Provider.of<OnboardingProvider>(context, listen: false);
-    final User? user = _authService.getCurrentUser();
-
-    if (user != null) {
-      final answers = onboardingProvider.answers;
-      await _firestoreService.updateOnboardingAnswers(answers);
-      await _n8nService.triggerPlanGeneration(
-          userId: user.uid, onboardingAnswers: answers);
-
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const MainScaffold()),
-          (Route<dynamic> route) => false,
-        );
+  void _nextQuestion() {
+    final currentQuestion = _questions[_currentQuestionIndex];
+    if (currentQuestion.answerKey == 'gymAccess') {
+      final provider = Provider.of<OnboardingProvider>(context, listen: false);
+      final answer = provider.answers['gymAccess'];
+      if (answer == 'Gym') {
+        final splitIndex = _questions.indexWhere((q) => q.answerKey == 'workoutSplit');
+        setState(() {
+          _currentQuestionIndex = splitIndex;
+          _loadAnswerForCurrentQuestion();
+        });
+        return;
       }
+    }
+
+    if (_currentQuestionIndex < _questions.length - 1) {
+      setState(() {
+        _currentQuestionIndex++;
+        _loadAnswerForCurrentQuestion();
+      });
     } else {
-      // Handle error: user somehow not logged in
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Could not find logged in user.')),
-      );
+      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SummaryScreen()));
     }
   }
 
-  void _nextQuestion() {
-    setState(() {
-      if (_currentQuestionIndex < _questions.length - 1) {
-        _currentQuestionIndex++;
-        _loadAnswerForCurrentQuestion();
-      } else {
-        _finishOnboarding();
-      }
-    });
-  }
-
   void _previousQuestion() {
+    final currentQuestion = _questions[_currentQuestionIndex];
+    if (currentQuestion.answerKey == 'workoutSplit') {
+      final provider = Provider.of<OnboardingProvider>(context, listen: false);
+      final answer = provider.answers['gymAccess'];
+      if (answer == 'Gym') {
+        final gymAccessIndex = _questions.indexWhere((q) => q.answerKey == 'gymAccess');
+        setState(() {
+          _currentQuestionIndex = gymAccessIndex;
+          _loadAnswerForCurrentQuestion();
+        });
+        return;
+      }
+    }
+
     if (_currentQuestionIndex > 0) {
       setState(() {
         _currentQuestionIndex--;
@@ -223,7 +210,6 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   void _updateProviderAnswer(String key, dynamic value) {
     Provider.of<OnboardingProvider>(context, listen: false)
         .updateAnswer(key, value);
-    // Trigger a rebuild to update button state
     setState(() {});
   }
 
@@ -232,7 +218,6 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     final question = _questions[_currentQuestionIndex];
     final answer = provider.answers[question.answerKey];
 
-    // Clear all controllers first
     _textController.clear();
     _dietStyleController.clear();
     _dietMacrosController.clear();
@@ -242,7 +227,6 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
 
     switch (question.type) {
       case QuestionType.singleChoice:
-        // The UI state is handled directly by reading from the provider
         break;
       case QuestionType.textInput:
       case QuestionType.textArea:
@@ -324,8 +308,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: ElevatedButton(
-                onPressed:
-                    isNextEnabled() && !_isLoading ? _nextQuestion : null,
+                onPressed: isNextEnabled() ? _nextQuestion : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
                   disabledBackgroundColor: AppColors.timestampGray,
@@ -334,11 +317,9 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: AppColors.white)
-                    : Text(
+                child: Text(
                         _currentQuestionIndex == _questions.length - 1
-                            ? 'Generate My Plan'
+                            ? 'Review Answers'
                             : 'Next',
                         style: const TextStyle(
                           fontSize: 18,
@@ -526,7 +507,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
           child: TextButton(
             onPressed: () {
               _updateProviderAnswer(question.answerKey, {'skipped': true});
-              _finishOnboarding();
+              _nextQuestion();
             },
             child: const Text(
               'Skip Nutrition',

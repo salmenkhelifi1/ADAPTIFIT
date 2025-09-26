@@ -2,6 +2,7 @@ import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:adaptifit/src/screens/core_app/workout_overview_screen.dart';
 
 class DailyPlanDetailScreen extends StatefulWidget {
   final DateTime date;
@@ -85,7 +86,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                               userId: '',
                               name: 'Workout not found',
                               exercises: []));
-                      return _buildWorkoutPlanCard(workout);
+                      return _buildWorkoutPlanCard(workout, calendarDay);
                     },
                   ),
                 const SizedBox(height: 20),
@@ -161,7 +162,7 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
     );
   }
 
-  Widget _buildWorkoutPlanCard(Workout workout) {
+  Widget _buildWorkoutPlanCard(Workout workout, Calendar calendarDay) {
     return _buildStyledCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +216,17 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
           ),
           const SizedBox(height: 20),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WorkoutOverviewScreen(
+                    planId: calendarDay.planId!,
+                    workoutId: workout.workoutId,
+                  ),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1EB955),
               minimumSize: const Size(double.infinity, 50),
