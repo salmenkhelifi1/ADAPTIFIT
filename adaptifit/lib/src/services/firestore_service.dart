@@ -1,14 +1,17 @@
+// lib/src/services/firestore_service.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:adaptifit/src/core/models/models.dart';
-import 'package:flutter/foundation.dart'; // Import for debugPrint
+import 'package:intl/intl.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // Get current user
   User? get currentUser => FirebaseAuth.instance.currentUser;
-  // Get user document
+
+  // Get user document reference
   DocumentReference<Map<String, dynamic>> get userDoc {
     final user = currentUser;
     if (user == null) {
@@ -45,7 +48,7 @@ class FirestoreService {
     return _db.collection('users').doc(uid).set(user.toFirestore());
   }
 
-  // Get user model
+  // Get user model stream
   Stream<UserModel> getUser() {
     return userDoc
         .snapshots()
@@ -69,17 +72,6 @@ class FirestoreService {
         snapshot.docs.map((doc) => Plan.fromFirestore(doc)).toList());
   }
 
-  // Get a single workout
-  Stream<Workout> getWorkout(String planId, String workoutId) {
-    return userDoc
-        .collection('plans')
-        .doc(planId)
-        .collection('workouts')
-        .doc(workoutId)
-        .snapshots()
-        .map((doc) => Workout.fromFirestore(doc));
-  }
-
   //-- Workouts --//
 
   // Get all workouts for a specific plan
@@ -92,6 +84,17 @@ class FirestoreService {
         .map((snapshot) {
       return snapshot.docs.map((doc) => Workout.fromFirestore(doc)).toList();
     });
+  }
+
+  // Get a single workout
+  Stream<Workout> getWorkout(String planId, String workoutId) {
+    return userDoc
+        .collection('plans')
+        .doc(planId)
+        .collection('workouts')
+        .doc(workoutId)
+        .snapshots()
+        .map((doc) => Workout.fromFirestore(doc));
   }
 
   //-- Calendar --//
@@ -111,6 +114,19 @@ class FirestoreService {
         snapshot.docs.map((doc) => Calendar.fromFirestore(doc)).toList());
   }
 
+  // NEW: Get upcoming calendar entries for the next 7 days
+  Stream<List<Calendar>> getUpcomingCalendarEntries() {
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    return userDoc
+        .collection('calendar')
+        .where(FieldPath.documentId, isGreaterThan: todayStr)
+        .orderBy(FieldPath.documentId)
+        .limit(7) // Fetch the next 7 days
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Calendar.fromFirestore(doc)).toList());
+  }
+
   // Set or update a calendar entry
   Future<void> setCalendarEntry(String date, Calendar data) {
     return userDoc.collection('calendar').doc(date).set(data.toFirestore());
@@ -122,6 +138,28 @@ class FirestoreService {
   Stream<List<Nutrition>> getNutritionPlans() {
     return userDoc.collection('nutrition').snapshots().map((snapshot) =>
         snapshot.docs.map((doc) => Nutrition.fromFirestore(doc)).toList());
+  }
+
+  // Get multiple nutrition plans by their IDs
+  Stream<List<Nutrition>> getNutritionsByIds(List<String> ids) {
+    if (ids.isEmpty) {
+      return Stream.value([]);
+    }
+    return userDoc
+        .collection('nutrition')
+        .where(FieldPath.documentId, whereIn: ids)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => Nutrition.fromFirestore(doc)).toList());
+  }
+
+  // Get a single nutrition plan
+  Stream<Nutrition> getNutrition(String nutritionId) {
+    return userDoc
+        .collection('nutrition')
+        .doc(nutritionId)
+        .snapshots()
+        .map((doc) => Nutrition.fromFirestore(doc));
   }
 
   // Add a nutrition plan
@@ -153,7 +191,7 @@ class FirestoreService {
   Stream<List<ChatMessage>> getChatMessages() {
     return userDoc
         .collection('chatMessages')
-        .orderBy('timestamp', descending: true) // Order by timestamp descending
+        .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => ChatMessage.fromFirestore(doc.data()))

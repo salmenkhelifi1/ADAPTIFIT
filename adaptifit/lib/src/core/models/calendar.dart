@@ -1,85 +1,68 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Calendar {
-  final String calendarId;
-  final String userId;
-  final String date;
-  final String? planId;
-  final String? workoutId;
-  final String? workoutName;
-  final String? notes;
-  final String status;
-  final bool completed;
-  final Timestamp? reminder;
-  final String? weekday;
-  final String? workoutType;
-  final int? weekIndex;
-  final int? workoutSequenceIndex;
+  // FIX: Added this field to store the document ID
+  final String dateId;
   final bool hasWorkout;
+  final String? workoutId;
+  final String? planId;
   final bool hasNutrition;
   final List<String> nutritionIds;
+  final bool isCompleted;
 
   Calendar({
-    required this.calendarId,
-    required this.userId,
-    required this.date,
-    this.planId,
-    this.workoutId,
-    this.workoutName,
-    this.notes,
-    required this.status,
-    required this.completed,
-    this.reminder,
-    this.weekday,
-    this.workoutType,
-    this.weekIndex,
-    this.workoutSequenceIndex,
+    required this.dateId,
     required this.hasWorkout,
+    this.workoutId,
+    this.planId,
     required this.hasNutrition,
     required this.nutritionIds,
+    this.isCompleted = false,
   });
 
   factory Calendar.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Calendar(
-      calendarId: doc.id,
-      userId: data['userId'] ?? '',
-      date: data['date'] ?? '',
-      planId: data['planId'],
-      workoutId: data['workoutId'],
-      workoutName: data['workoutName'],
-      notes: data['notes'],
-      status: data['status'] ?? 'scheduled',
-      completed: data['completed'] ?? false,
-      reminder: data['reminder'],
-      weekday: data['weekday'],
-      workoutType: data['workoutType'],
-      weekIndex: data['weekIndex'],
-      workoutSequenceIndex: data['workoutSequenceIndex'],
+      // FIX: Populate the dateId from the document ID
+      dateId: doc.id,
       hasWorkout: data['hasWorkout'] ?? false,
+      workoutId: data['workoutId'],
+      planId: data['planId'],
       hasNutrition: data['hasNutrition'] ?? false,
       nutritionIds: List<String>.from(data['nutritionIds'] ?? []),
+      isCompleted: data['isCompleted'] ?? false,
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return {
-      'userId': userId,
-      'date': date,
-      'planId': planId,
-      'workoutId': workoutId,
-      'workoutName': workoutName,
-      'notes': notes,
-      'status': status,
-      'completed': completed,
-      'reminder': reminder,
-      'weekday': weekday,
-      'workoutType': workoutType,
-      'weekIndex': weekIndex,
-      'workoutSequenceIndex': workoutSequenceIndex,
       'hasWorkout': hasWorkout,
+      'workoutId': workoutId,
+      'planId': planId,
       'hasNutrition': hasNutrition,
       'nutritionIds': nutritionIds,
+      'isCompleted': isCompleted,
     };
+  }
+
+  // ADDED: copyWith method for easier updates
+  Calendar copyWith({
+    String? dateId,
+    bool? hasWorkout,
+    String? workoutId,
+    String? planId,
+    bool? hasNutrition,
+    List<String>? nutritionIds,
+    bool? isCompleted,
+  }) {
+    return Calendar(
+      dateId: dateId ?? this.dateId,
+      hasWorkout: hasWorkout ?? this.hasWorkout,
+      workoutId: workoutId ?? this.workoutId,
+      planId: planId ?? this.planId,
+      hasNutrition: hasNutrition ?? this.hasNutrition,
+      nutritionIds: nutritionIds ?? this.nutritionIds,
+      isCompleted: isCompleted ?? this.isCompleted,
+    );
   }
 }

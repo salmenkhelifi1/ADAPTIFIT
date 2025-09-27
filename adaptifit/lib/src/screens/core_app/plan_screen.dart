@@ -1,12 +1,12 @@
 import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
-
-import 'package:adaptifit/src/core/models/user.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:adaptifit/src/screens/core_app/calendar_screen.dart'; // Import the calendar screen
+import 'package:adaptifit/src/screens/core_app/calendar_screen.dart';
 import 'package:adaptifit/src/screens/core_app/workout_overview_screen.dart';
 import 'package:adaptifit/src/screens/core_app/nutrition_overview_screen.dart';
+import 'package:adaptifit/src/screens/core_app/daily_plan_detail_screen.dart';
 import 'package:intl/intl.dart';
 
 class PlanScreen extends StatefulWidget {
@@ -18,6 +18,17 @@ class PlanScreen extends StatefulWidget {
 
 class _PlanScreenState extends State<PlanScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  Stream<List<Plan>>? _plansStream;
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_currentUser != null) {
+      // Stream for the new "Your Workout Library" section
+      _plansStream = _firestoreService.getPlans();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,326 +42,50 @@ class _PlanScreenState extends State<PlanScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // --- Header ---
-              Container(
-                padding: const EdgeInsets.all(20.0),
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryGreen,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'My Plan',
-                          style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.calendar_today_outlined,
-                              size: 28, color: AppColors.white),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const CalendarScreen()),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    Text(
-                      DateFormat('EEEE, MMMM d').format(DateTime.now()),
-                      style: const TextStyle(
-                          fontSize: 16, color: AppColors.white70),
-                    ),
-                  ],
-                ),
-              ),
+              _buildHeader(context),
               const SizedBox(height: 20),
 
               // --- Today's Plan Section ---
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Today's Plan",
-                      style:
-                          TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Plan Overview >',
-                      style: TextStyle(
-                        color: AppColors.primaryGreen,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                child: _buildSectionHeader(
+                  title: "Today's Plan",
+                  actionText: "Plan Overview >",
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            DailyPlanDetailScreen(date: DateTime.now()),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: StreamBuilder<UserModel>(
-                  stream: _firestoreService.getUser(),
-                  builder: (context, userSnapshot) {
-                    if (userSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final user = userSnapshot.data;
-
-                    return StreamBuilder<Calendar>(
-                      stream: _firestoreService.getCalendarEntry(today),
-                      builder: (context, calendarSnapshot) {
-                        if (calendarSnapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        }
-
-                        // Check if onboarding is complete but plan is not yet generated
-                        if (user != null &&
-                            user.onboardingAnswers.isNotEmpty &&
-                            !calendarSnapshot.hasData) {
-                          return _buildGeneratingPlanCard();
-                        }
-
-                        if (!calendarSnapshot.hasData ||
-                            calendarSnapshot.data == null) {
-                          return _buildNoPlanCard();
-                        }
-
-                        final calendarDay = calendarSnapshot.data!;
-
-                        return Column(
-                          children: [
-                            if (calendarDay.hasWorkout &&
-                                calendarDay.planId != null)
-                              StreamBuilder<List<Workout>>(
-                                stream: _firestoreService
-                                    .getWorkouts(calendarDay.planId!),
-                                builder: (context, workoutSnapshot) {
-                                  if (workoutSnapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const Center(
-                                        child: CircularProgressIndicator());
-                                  }
-                                  if (!workoutSnapshot.hasData ||
-                                      workoutSnapshot.data!.isEmpty) {
-                                    return _buildNoPlanCard(
-                                        title: "Workout not found",
-                                        message:
-                                            "Today's workout could not be loaded.");
-                                  }
-
-                                  final workout = workoutSnapshot.data!
-                                      .firstWhere(
-                                          (w) =>
-                                              w.workoutId ==
-                                              calendarDay.workoutId,
-                                          orElse: () => Workout(
-                                              workoutId: '',
-                                              userId: '',
-                                              name: 'Workout not found',
-                                              exercises: []));
-
-                                  if (workout.name == 'Workout not found') {
-                                    return _buildNoPlanCard(
-                                        title: "Workout not found",
-                                        message:
-                                            "Today's workout could not be loaded.");
-                                  }
-
-                                  return GestureDetector(
-                                    onTap: () {
-                                      debugPrint("Navigating to WorkoutOverviewScreen with planId: ${workout.planId} and workoutId: ${workout.workoutId}");
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              WorkoutOverviewScreen(
-                                                  planId: workout.planId!,
-                                                  workoutId: workout.workoutId),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildWorkoutCard(workout),
-                                  );
-                                },
-                              ),
-                            const SizedBox(height: 16),
-                            if (calendarDay.hasNutrition)
-                              StreamBuilder<List<Nutrition>>(
-                                stream: _firestoreService.getNutritionPlans(),
-                                builder: (context, nutritionSnapshot) {
-                                  if (nutritionSnapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const Center(
-                                        child: CircularProgressIndicator());
-                                  }
-                                  if (!nutritionSnapshot.hasData ||
-                                      nutritionSnapshot.data!.isEmpty) {
-                                    return const SizedBox
-                                        .shrink(); // Or a 'no nutrition' card
-                                  }
-                                  final nutrition = nutritionSnapshot.data!
-                                      .firstWhere(
-                                          (n) => calendarDay.nutritionIds
-                                              .contains(n.nutritionId),
-                                          orElse: () => Nutrition(
-                                              nutritionId: '',
-                                              userId: '',
-                                              mealType: 'Not Found',
-                                              items: [],
-                                              totalCalories: 0,
-                                              totalProtein: 0,
-                                              totalCarbs: 0,
-                                              totalFat: 0));
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              NutritionOverviewScreen(
-                                                  nutritionId:
-                                                      nutrition.nutritionId),
-                                        ),
-                                      );
-                                    },
-                                    child: _buildNutritionCard(nutrition),
-                                  );
-                                },
-                              ),
-                          ],
-                        );
-                      },
                     );
                   },
                 ),
               ),
+              const SizedBox(height: 10),
+              _buildTodaysPlan(today),
               const SizedBox(height: 24),
 
               // --- Weekly Progress Section ---
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: StreamBuilder<UserModel>(
-                  stream: _firestoreService.getUser(),
-                  builder: (context, userSnapshot) {
-                    if (!userSnapshot.hasData) {
-                      return _buildWeeklyProgressCard(
-                          0, 7, 19, 21); // Show dummy data while loading
-                    }
-                    final user = userSnapshot.data!;
-                    final completedWorkouts =
-                        user.progress['completedWorkouts'] ?? 0;
-                    final totalWorkouts = user.daysPerWeek;
-                    final completedMeals = user.progress['completedMeals'] ?? 0;
-                    final totalMeals = totalWorkouts * 3;
-
-                    return _buildWeeklyProgressCard(completedWorkouts,
-                        totalWorkouts, completedMeals, totalMeals);
-                  },
-                ),
+                child: _buildSectionHeader(title: "Weekly Progress"),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: _buildWeeklyProgress(),
               ),
               const SizedBox(height: 24),
 
-              // --- Upcoming Plans Section ---
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0),
-                child: Text(
-                  "Upcoming Plans",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
+              // --- Upcoming Plans Section (UPDATED LOGIC) ---
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: _buildSectionHeader(title: "Your Workout Library"),
               ),
               const SizedBox(height: 10),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: 3,
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                itemBuilder: (context, index) {
-                  final nextDay = DateTime.now().add(Duration(days: index + 1));
-                  final nextDayString =
-                      DateFormat('yyyy-MM-dd').format(nextDay);
-                  return StreamBuilder<Calendar>(
-                    stream: _firestoreService.getCalendarEntry(nextDayString),
-                    builder: (context, calendarSnapshot) {
-                      if (!calendarSnapshot.hasData ||
-                          calendarSnapshot.data == null) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: _buildNoPlanCard(
-                            title:
-                                'No plan for ${DateFormat('EEEE').format(nextDay)}',
-                            message: 'Enjoy your day off or check back later!',
-                          ),
-                        );
-                      }
-                      final calendarDay = calendarSnapshot.data!;
-                      return StreamBuilder<List<Workout>>(
-                        stream: (calendarDay.planId != null)
-                            ? _firestoreService.getWorkouts(calendarDay.planId!)
-                            : Stream.value([]),
-                        builder: (context, workoutSnapshot) {
-                          final workout = workoutSnapshot.data?.firstWhere(
-                              (w) => w.workoutId == calendarDay.workoutId,
-                              orElse: () => Workout(
-                                  workoutId: '',
-                                  userId: '',
-                                  name: 'Rest Day',
-                                  exercises: []));
-                          return StreamBuilder<List<Nutrition>>(
-                            stream: _firestoreService.getNutritionPlans(),
-                            builder: (context, nutritionSnapshot) {
-                              final nutrition = nutritionSnapshot.data
-                                  ?.firstWhere(
-                                      (n) => calendarDay.nutritionIds
-                                          .contains(n.nutritionId),
-                                      orElse: () => Nutrition(
-                                          nutritionId: '',
-                                          userId: '',
-                                          mealType: 'No Nutrition',
-                                          items: [],
-                                          totalCalories: 0,
-                                          totalProtein: 0,
-                                          totalCarbs: 0,
-                                          totalFat: 0));
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 16.0),
-                                child: _buildUpcomingPlanCard(
-                                  dayAndDate:
-                                      DateFormat('E, MMM d').format(nextDay),
-                                  emoji:
-                                      workout?.name == 'Rest Day' ? '😴' : '💪',
-                                  workout: workout?.name ?? '...',
-                                  breakfast: nutrition?.items.isNotEmpty == true
-                                      ? nutrition!.items.first.name
-                                      : '...',
-                                  dinner: (nutrition?.items.length ?? 0) > 1
-                                      ? nutrition!.items.last.name
-                                      : '...',
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
+              _buildWorkoutLibraryList(),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -358,63 +93,225 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
-  Widget _buildNoPlanCard({
-    String title = "No plan for today",
-    String message =
-        "Your personalized plan is being generated. Please check back in a few minutes.",
-  }) {
-    return _buildStyledContainer(
-      child: Column(
+  Widget _buildTodaysPlan(String today) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: StreamBuilder<UserModel>(
+        stream: _firestoreService.getUser(),
+        builder: (context, userSnapshot) {
+          if (userSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final user = userSnapshot.data;
+
+          return StreamBuilder<Calendar>(
+            stream: _firestoreService.getCalendarEntry(today),
+            builder: (context, calendarSnapshot) {
+              if (calendarSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (user != null &&
+                  user.onboardingCompleted &&
+                  !calendarSnapshot.hasData) {
+                return _buildGeneratingPlanCard();
+              }
+
+              if (!calendarSnapshot.hasData || calendarSnapshot.data == null) {
+                return _buildNoPlanCard(title: "Rest Day");
+              }
+
+              final calendarDay = calendarSnapshot.data!;
+
+              return Column(
+                children: [
+                  if (calendarDay.hasWorkout &&
+                      calendarDay.planId != null &&
+                      calendarDay.workoutId != null)
+                    StreamBuilder<Workout>(
+                      stream: _firestoreService.getWorkout(
+                          calendarDay.planId!, calendarDay.workoutId!),
+                      builder: (context, workoutSnapshot) {
+                        if (workoutSnapshot.hasData) {
+                          return _buildWorkoutCard(workoutSnapshot.data!);
+                        }
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                    )
+                  else
+                    _buildNoPlanCard(
+                        title: "Rest Day", message: "Enjoy your day off!"),
+                  if (calendarDay.hasNutrition) ...[
+                    const SizedBox(height: 16),
+                    StreamBuilder<List<Nutrition>>(
+                      stream: _firestoreService
+                          .getNutritionsByIds(calendarDay.nutritionIds),
+                      builder: (context, nutritionSnapshot) {
+                        if (nutritionSnapshot.hasData) {
+                          return Column(
+                            children: nutritionSnapshot.data!
+                                .map((nutrition) => Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 16.0),
+                                      child: _buildNutritionCard(nutrition),
+                                    ))
+                                .toList(),
+                          );
+                        }
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                    ),
+                  ]
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildWeeklyProgress() {
+    return StreamBuilder<UserModel>(
+      stream: _firestoreService.getUser(),
+      builder: (context, userSnapshot) {
+        if (!userSnapshot.hasData) {
+          return _buildWeeklyProgressCard(0, 7, 0, 21); // Placeholder
+        }
+        final user = userSnapshot.data!;
+        final progress = user.progress;
+        final completedWorkouts = progress['completedWorkouts'] ?? 0;
+        final totalWorkouts = user.daysPerWeek;
+        final completedMeals = progress['mealsCompleted'] ?? 0;
+        final totalMeals = totalWorkouts * 3;
+        return _buildWeeklyProgressCard(
+            completedWorkouts, totalWorkouts, completedMeals, totalMeals);
+      },
+    );
+  }
+
+  // UPDATED: This widget now builds a library of all workouts from all plans
+  Widget _buildWorkoutLibraryList() {
+    return StreamBuilder<List<Plan>>(
+      stream: _plansStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child:
+                _buildStyledContainer(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: _buildStyledContainer(child: const Text('No plans found.')),
+          );
+        }
+
+        final plans = snapshot.data!;
+        return Column(
+          children: plans.map((plan) {
+            return StreamBuilder<List<Workout>>(
+              stream: _firestoreService.getWorkouts(plan.planId),
+              builder: (context, workoutSnapshot) {
+                if (workoutSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const SizedBox.shrink();
+                }
+                if (!workoutSnapshot.hasData || workoutSnapshot.data!.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                final workouts = workoutSnapshot.data!;
+                return Column(
+                  children: workouts.map((workout) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                      child: _buildUpcomingPlanCard(
+                        dayOfWeek: plan.planName,
+                        date: workout.targetMuscles?.join(', ') ??
+                            'General Workout',
+                        workoutName: workout.name,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WorkoutOverviewScreen(
+                                planId: plan.planId,
+                                workoutId: workout.workoutId,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('My Plan',
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.darkText)),
+              Text(DateFormat('EEEE, MMMM d').format(DateTime.now()),
+                  style: const TextStyle(
+                      fontSize: 16, color: AppColors.subtitleGray)),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.subtitleGray),
-          ),
-          const SizedBox(height: 16),
-          const Icon(
-            Icons.hourglass_empty,
-            size: 40,
-            color: AppColors.grey,
+          IconButton(
+            icon: const Icon(Icons.calendar_today_outlined,
+                size: 28, color: AppColors.darkText),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CalendarScreen()),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGeneratingPlanCard() {
-    return _buildStyledContainer(
-      child: Column(
-        children: const [
-          Text(
-            "Generating Your Plan...",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
+  Widget _buildSectionHeader(
+      {required String title, String? actionText, VoidCallback? onTap}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        if (actionText != null)
+          GestureDetector(
+            onTap: onTap,
+            child: Text(actionText,
+                style: const TextStyle(
+                    color: AppColors.primaryGreen,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16)),
           ),
-          SizedBox(height: 8),
-          Text(
-            "Please wait while we create your personalized fitness and nutrition plan. This may take a few minutes.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.subtitleGray),
-          ),
-          SizedBox(height: 16),
-          CircularProgressIndicator(),
-        ],
-      ),
+      ],
     );
   }
 
-  // A generic card builder to match the design's container style
   Widget _buildStyledContainer({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(20.0),
@@ -423,11 +320,10 @@ class _PlanScreenState extends State<PlanScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.grey.withAlpha(20),
-            spreadRadius: 2,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+              color: AppColors.darkText.withOpacity(0.05),
+              spreadRadius: 2,
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
         ],
       ),
       child: child,
@@ -442,62 +338,59 @@ class _PlanScreenState extends State<PlanScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withAlpha(38),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.fitness_center,
-                    color: AppColors.primaryGreen),
-              ),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.fitness_center,
+                      color: AppColors.primaryGreen)),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    workout.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '🕒 45 minutes',
-                    style: TextStyle(color: AppColors.subtitleGray),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(workout.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    if (workout.duration != null)
+                      Text('🕒 ${workout.duration}',
+                          style:
+                              const TextStyle(color: AppColors.subtitleGray)),
+                  ],
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'View Details >',
-            style: TextStyle(
-              color: AppColors.primaryGreen,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => WorkoutOverviewScreen(
+                          planId: workout.planId!,
+                          workoutId: workout.workoutId)),
+                );
+              },
+              child: const Text('View Details >',
+                  style: TextStyle(
+                      color: AppColors.primaryGreen,
+                      fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Workout Completed',
-              style: TextStyle(
-                color: AppColors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                  elevation: 0),
+              child: const Text('Workout Completed',
+                  style: TextStyle(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16))),
         ],
       ),
     );
@@ -511,61 +404,56 @@ class _PlanScreenState extends State<PlanScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withAlpha(25),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.apple, color: AppColors.primaryBlue),
-              ),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: AppColors.secondaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10)),
+                  child:
+                      const Icon(Icons.apple, color: AppColors.secondaryBlue)),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    nutrition.mealType,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Balanced nutrition plan',
-                    style: TextStyle(color: AppColors.subtitleGray),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nutrition.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 4),
+                    const Text('Balanced nutrition plan',
+                        style: TextStyle(color: AppColors.subtitleGray)),
+                  ],
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'View Details >',
-            style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => NutritionOverviewScreen(
+                          nutritionId: nutrition.nutritionId)),
+                );
+              },
+              child: const Text('View Details >',
+                  style: TextStyle(
+                      color: AppColors.primaryGreen,
+                      fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Nutrition Completed',
-              style: TextStyle(
-                color: AppColors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15)),
+                  elevation: 0),
+              child: const Text('Nutrition Completed',
+                  style: TextStyle(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16))),
         ],
       ),
     );
@@ -577,76 +465,26 @@ class _PlanScreenState extends State<PlanScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            children: [
-              Icon(Icons.trending_up, color: AppColors.darkText),
-              SizedBox(width: 8),
-              Text(
-                'Weekly Progress',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
+          const Row(children: [
+            Icon(Icons.trending_up, color: AppColors.darkText),
+            SizedBox(width: 8),
+            Text('Weekly Progress',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+          ]),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$completedWorkouts/$totalWorkouts',
-                    style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryGreen),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text('Workouts',
-                      style: TextStyle(color: AppColors.subtitleGray)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: 120,
-                    child: LinearProgressIndicator(
-                      value: totalWorkouts == 0
-                          ? 0
-                          : completedWorkouts / totalWorkouts,
-                      backgroundColor: AppColors.lightGrey2,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.primaryGreen),
-                      minHeight: 6,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$completedMeals/$totalMeals',
-                    style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryBlue),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text('Meals',
-                      style: TextStyle(color: AppColors.subtitleGray)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: 120,
-                    child: LinearProgressIndicator(
-                      value: totalMeals == 0 ? 0 : completedMeals / totalMeals,
-                      backgroundColor: AppColors.lightGrey2,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.primaryBlue),
-                      minHeight: 6,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ],
-              ),
+              _buildProgressItem(
+                  value: completedWorkouts,
+                  total: totalWorkouts,
+                  label: 'Workouts',
+                  color: AppColors.primaryGreen),
+              _buildProgressItem(
+                  value: completedMeals,
+                  total: totalMeals,
+                  label: 'Meals',
+                  color: AppColors.secondaryBlue),
             ],
           ),
         ],
@@ -654,60 +492,135 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
-  Widget _buildUpcomingPlanCard({
-    required String dayAndDate,
-    required String emoji,
-    required String workout,
-    required String breakfast,
-    required String dinner,
-  }) {
+  Widget _buildProgressItem(
+      {required int value,
+      required int total,
+      required String label,
+      required Color color}) {
+    return Column(
+      children: [
+        Text('$value/$total',
+            style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkText)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: AppColors.subtitleGray)),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 120,
+          child: LinearProgressIndicator(
+              value: total == 0 ? 0 : value / total,
+              backgroundColor: AppColors.lightGrey2,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(3)),
+        ),
+      ],
+    );
+  }
+
+  String _getWorkoutEmoji(String workoutName) {
+    final name = workoutName.toLowerCase();
+    if (name.contains('strength')) return '💪';
+    if (name.contains('cardio')) return '🏃';
+    if (name.contains('recovery')) return '🧘';
+    if (name.contains('rest')) return '😌';
+    return '🏋️';
+  }
+
+  Widget _buildUpcomingPlanCard(
+      {required String dayOfWeek,
+      required String date,
+      required String workoutName,
+      String? breakfast,
+      String? dinner,
+      required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: _buildStyledContainer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(dayOfWeek,
+                style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkText)),
+            const SizedBox(height: 4),
+            Text(date,
+                style: const TextStyle(
+                    color: AppColors.subtitleGray, fontSize: 14)),
+            const SizedBox(height: 20),
+            Row(children: [
+              Text(_getWorkoutEmoji(workoutName),
+                  style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Text(workoutName,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkText)),
+            ]),
+            if (breakfast != null || dinner != null) const SizedBox(height: 12),
+            if (breakfast != null) ...[
+              Text('Breakfast: $breakfast',
+                  style: const TextStyle(
+                      color: AppColors.subtitleGray, fontSize: 14)),
+              const SizedBox(height: 6),
+            ],
+            if (dinner != null)
+              Text('Dinner: $dinner',
+                  style: const TextStyle(
+                      color: AppColors.subtitleGray, fontSize: 14)),
+            const SizedBox(height: 16),
+            const Align(
+                alignment: Alignment.centerRight,
+                child: Text('View Details >',
+                    style: TextStyle(
+                        color: AppColors.primaryGreen,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGeneratingPlanCard() {
+    return _buildStyledContainer(
+      child: Column(
+        children: const [
+          Text("Generating Your Plan...",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          SizedBox(height: 8),
+          Text(
+              "Please wait while we create your personalized fitness and nutrition plan. This may take a few minutes.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.subtitleGray)),
+          SizedBox(height: 16),
+          CircularProgressIndicator(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoPlanCard(
+      {String title = "No plan for today",
+      String message = "Enjoy your day off!"}) {
     return _buildStyledContainer(
       child: Column(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      dayAndDate,
-                      style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Text(emoji, style: const TextStyle(fontSize: 20)),
-                        const SizedBox(width: 8),
-                        Text(
-                          workout,
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text('Breakfast: $breakfast',
-                        style: const TextStyle(color: AppColors.subtitleGray)),
-                    const SizedBox(height: 4),
-                    Text('Dinner: $dinner',
-                        style: const TextStyle(color: AppColors.subtitleGray)),
-                  ],
-                ),
-              ),
-              Text(
-                'View Details >',
-                style: TextStyle(
-                  color: AppColors.primaryGreen,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          Text(title,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 8),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.subtitleGray)),
+          const SizedBox(height: 16),
+          const Icon(Icons.celebration_outlined,
+              size: 40, color: AppColors.grey),
         ],
       ),
     );

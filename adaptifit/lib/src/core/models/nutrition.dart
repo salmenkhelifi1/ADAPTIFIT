@@ -1,103 +1,82 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class NutritionItem {
+class Meal {
   final String name;
+  final List<String> items;
   final int calories;
   final int protein;
-  final int carbs;
-  final int fat;
 
-  NutritionItem({
-    required this.name,
-    required this.calories,
-    required this.protein,
-    required this.carbs,
-    required this.fat,
+  Meal({
+    this.name = '',
+    this.items = const [],
+    this.calories = 0,
+    this.protein = 0,
   });
 
-  factory NutritionItem.fromMap(Map<String, dynamic> map) {
-    return NutritionItem(
+  factory Meal.fromMap(Map<String, dynamic> map) {
+    return Meal(
       name: map['name'] ?? '',
+      items: List<String>.from(map['items'] ?? []),
       calories: map['calories'] ?? 0,
       protein: map['protein'] ?? 0,
-      carbs: map['carbs'] ?? 0,
-      fat: map['fat'] ?? 0,
     );
   }
 
+  // Method to convert a Meal object to a Map
   Map<String, dynamic> toMap() {
     return {
       'name': name,
+      'items': items,
       'calories': calories,
       'protein': protein,
-      'carbs': carbs,
-      'fat': fat,
     };
   }
 }
 
 class Nutrition {
   final String nutritionId;
-  final String userId;
-  final String? planId;
-  final String mealType;
-  final String? notes;
-  final List<NutritionItem> items;
+  final String name; // e.g., "High Protein Focus"
+  final Map<String, Meal>
+      meals; // Keys: "breakfast", "lunch", "dinner", "snacks"
+  final double hydrationGoal; // In Liters
   final int totalCalories;
   final int totalProtein;
-  final int totalCarbs;
-  final int totalFat;
 
   Nutrition({
     required this.nutritionId,
-    required this.userId,
-    this.planId,
-    required this.mealType,
-    this.notes,
-    required this.items,
-    required this.totalCalories,
-    required this.totalProtein,
-    required this.totalCarbs,
-    required this.totalFat,
+    this.name = '',
+    this.meals = const {},
+    this.hydrationGoal = 0.0,
+    this.totalCalories = 0,
+    this.totalProtein = 0,
   });
 
   factory Nutrition.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    List<NutritionItem> items = (data['items'] as List<dynamic>?)
-            ?.map((e) => NutritionItem.fromMap(e as Map<String, dynamic>))
-            .toList() ??
-        [];
-
-    int totalCalories = items.fold(0, (sum, item) => sum + item.calories);
-    int totalProtein = items.fold(0, (sum, item) => sum + item.protein);
-    int totalCarbs = items.fold(0, (sum, item) => sum + item.carbs);
-    int totalFat = items.fold(0, (sum, item) => sum + item.fat);
+    var mealData = data['meals'] as Map<String, dynamic>? ?? {};
+    Map<String, Meal> mealsMap = mealData.map((key, value) {
+      return MapEntry(key, Meal.fromMap(value as Map<String, dynamic>));
+    });
 
     return Nutrition(
       nutritionId: doc.id,
-      userId: data['userId'] ?? '',
-      planId: data['planId'],
-      mealType: data['mealType'] ?? '',
-      notes: data['notes'],
-      items: items,
-      totalCalories: data['totalCalories'] ?? totalCalories,
-      totalProtein: data['totalProtein'] ?? totalProtein,
-      totalCarbs: data['totalCarbs'] ?? totalCarbs,
-      totalFat: data['totalFat'] ?? totalFat,
+      name: data['name'] ?? 'Personalized meal plan',
+      meals: mealsMap,
+      hydrationGoal: (data['hydrationGoal'] as num?)?.toDouble() ?? 0.0,
+      totalCalories: data['totalCalories'] ?? 0,
+      totalProtein: data['totalProtein'] ?? 0,
     );
   }
 
+  // FIX: Added the missing toFirestore method
   Map<String, dynamic> toFirestore() {
     return {
-      'userId': userId,
-      'planId': planId,
-      'mealType': mealType,
-      'notes': notes,
-      'items': items.map((e) => e.toMap()).toList(),
+      'name': name,
+      // Convert the Meal objects back to Maps for Firestore
+      'meals': meals.map((key, value) => MapEntry(key, value.toMap())),
+      'hydrationGoal': hydrationGoal,
       'totalCalories': totalCalories,
       'totalProtein': totalProtein,
-      'totalCarbs': totalCarbs,
-      'totalFat': totalFat,
     };
   }
 }

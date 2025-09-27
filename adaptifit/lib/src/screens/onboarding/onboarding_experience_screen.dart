@@ -36,7 +36,7 @@ class _OnboardingExperienceScreenState
     print('Building OnboardingExperienceScreen');
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.lightMintBackground,
+        backgroundColor: AppColors.screenBackground,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.darkText),

@@ -1,10 +1,12 @@
+// lib/src/core/models/workout.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart'; // Import for debugPrint
 
 class Exercise {
   final String name;
   final int sets;
-  final String reps; // Changed to String to handle ranges like "8-12"
+  final String reps;
   final String? rest;
   final String? instructions;
   final String? modifications;
@@ -12,6 +14,7 @@ class Exercise {
   final String? exerciseId;
   final String? targetMuscle;
   final String? weight;
+  final String? duration; // Added to handle exercises like "Plank"
 
   Exercise({
     required this.name,
@@ -24,14 +27,14 @@ class Exercise {
     this.exerciseId,
     this.targetMuscle,
     this.weight,
+    this.duration,
   });
 
-  // Updated factory to match the fields from your n8n/Firebase data
   factory Exercise.fromMap(Map<String, dynamic> map) {
     return Exercise(
       name: map['name'] ?? '',
       sets: map['sets'] ?? 0,
-      reps: map['reps']?.toString() ?? '0', // Safely handle reps
+      reps: map['reps']?.toString() ?? '0',
       rest: map['rest'],
       instructions: map['instructions'],
       modifications: map['modifications'],
@@ -39,6 +42,7 @@ class Exercise {
       exerciseId: map['exerciseId'],
       targetMuscle: map['targetMuscle'],
       weight: map['weight'],
+      duration: map['duration'],
     );
   }
 
@@ -54,6 +58,7 @@ class Exercise {
       'exerciseId': exerciseId,
       'targetMuscle': targetMuscle,
       'weight': weight,
+      'duration': duration,
     };
   }
 }
@@ -65,7 +70,7 @@ class Workout {
   final String name;
   final String? day;
   final List<Exercise> exercises;
-  final String? notes; // This can be kept for future use
+  final String? notes;
   final List<String>? targetMuscles;
   final int? week;
   final String? duration;
@@ -83,22 +88,15 @@ class Workout {
     this.duration,
   });
 
-  // Updated factory to correctly parse the nested 'workout' map
   factory Workout.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
-    // --- DEBUG PRINT STATEMENT ---
-    // This will print the raw data from Firestore to your terminal.
-    debugPrint("--- Raw Workout Data from Firestore for doc ${doc.id} ---");
+    debugPrint("--- Parsing Workout Data for doc ${doc.id} ---");
     debugPrint(data.toString());
-    // ---------------------------
 
-    // The main workout data is nested inside a 'workout' map.
-    // We need to access it directly.
     if (!data.containsKey('workout')) {
       debugPrint(
           "--- ERROR: 'workout' key not found in document ${doc.id} ---");
-      // Return a default or error workout if the structure is wrong
       return Workout(
         workoutId: doc.id,
         userId: data['userId'] ?? '',
@@ -110,31 +108,42 @@ class Workout {
 
     Map<String, dynamic> workoutData = data['workout'] as Map<String, dynamic>;
 
+    // *** FIX: Safely parse the exercises list ***
+    List<Exercise> exercisesList = [];
+    if (workoutData['exercises'] != null && workoutData['exercises'] is List) {
+      exercisesList = (workoutData['exercises'] as List<dynamic>)
+          .map((e) => Exercise.fromMap(e as Map<String, dynamic>))
+          .toList();
+    } else if (workoutData['exercise'] != null &&
+        workoutData['exercise'] is String) {
+      // Handle the "Active Recovery" case where there is a single exercise string
+      exercisesList.add(Exercise(
+        name: workoutData['exercise'],
+        sets: 1,
+        reps: 'N/A',
+      ));
+    }
+
     return Workout(
       workoutId: doc.id,
-      // userId and planId are at the top level
       userId: data['userId'] ?? '',
       planId: data['planId'],
-      // The rest of the data comes from the nested map
       name: workoutData['name'] ?? 'Untitled Workout',
       day: workoutData['day'],
-      exercises: (workoutData['exercises'] as List<dynamic>?)
-              ?.map((e) => Exercise.fromMap(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      notes: workoutData['notes'], // Check for notes inside the nested map
-      targetMuscles: workoutData['targetMuscles'] != null ? List<String>.from(workoutData['targetMuscles']) : null,
+      exercises: exercisesList, // Use the safely parsed list
+      notes: workoutData['notes'],
+      targetMuscles: workoutData['targetMuscles'] != null
+          ? List<String>.from(workoutData['targetMuscles'])
+          : null,
       week: workoutData['week'],
       duration: workoutData['duration'],
     );
   }
 
   Map<String, dynamic> toFirestore() {
-    // This is for writing data back to Firestore, ensure it matches your needs
     return {
       'userId': userId,
       'planId': planId,
-      // Nest the workout data to match the read structure
       'workout': {
         'name': name,
         'day': day,

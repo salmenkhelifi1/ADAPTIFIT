@@ -10,8 +10,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:adaptifit/src/screens/core_app/rewrite_plan_screen.dart';
-import 'package:adaptifit/src/core/models/plan.dart';
-import 'package:adaptifit/src/screens/core_app/workout_overview_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,14 +23,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final N8nService _n8nService = N8nService();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
   Stream<UserModel>? _userStream;
-  Stream<List<Plan>>? _plansStream;
 
   @override
   void initState() {
     super.initState();
     if (_currentUser != null) {
       _userStream = _firestoreService.getUser();
-      _plansStream = _firestoreService.getPlans();
     }
   }
 
@@ -63,7 +59,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
               backgroundColor: AppColors.primaryGreen,
-              // You can replace this with your actual logo asset
               child: Text('A',
                   style: TextStyle(
                       color: AppColors.white,
@@ -103,8 +98,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildProfileHeader(user),
                 const SizedBox(height: 24),
                 _buildAccountInfoCard(user),
-                const SizedBox(height: 24),
-                _buildPlansCard(),
                 const SizedBox(height: 24),
                 _buildProgressCard(user),
                 const SizedBox(height: 24),
@@ -212,83 +205,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontWeight: FontWeight.bold),
         ),
       ),
-    );
-  }
-
-  Widget _buildPlansCard() {
-    return StreamBuilder<List<Plan>>(
-      stream: _plansStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildInfoCard(
-              title: 'Your Plans',
-              child: const Center(child: CircularProgressIndicator()));
-        }
-        if (snapshot.hasError) {
-          return _buildInfoCard(
-              title: 'Your Plans', child: Text('Error: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return _buildInfoCard(
-              title: 'Your Plans', child: const Text('No plans found.'));
-        }
-
-        final plans = snapshot.data!;
-        return _buildInfoCard(
-          title: 'Your Plans',
-          child: ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: plans.length,
-            itemBuilder: (context, index) {
-              final plan = plans[index];
-              return ExpansionTile(
-                title: Text(plan.planName),
-                subtitle: Text('${plan.planType} - ${plan.duration}'),
-                children: [
-                  StreamBuilder<List<Workout>>(
-                    stream: _firestoreService.getWorkouts(plan.planId),
-                    builder: (context, workoutSnapshot) {
-                      if (workoutSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (workoutSnapshot.hasError) {
-                        return const ListTile(
-                            title: Text('Error loading workouts'));
-                      }
-                      if (!workoutSnapshot.hasData ||
-                          workoutSnapshot.data!.isEmpty) {
-                        return const ListTile(title: Text('No workouts found.'));
-                      }
-                      final workouts = workoutSnapshot.data!;
-                      return Column(
-                        children: workouts.map((workout) {
-                          return ListTile(
-                            title: Text(workout.name),
-                            subtitle: Text(workout.day ?? ''),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => WorkoutOverviewScreen(
-                                    planId: plan.planId,
-                                    workoutId: workout.workoutId,
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
     );
   }
 

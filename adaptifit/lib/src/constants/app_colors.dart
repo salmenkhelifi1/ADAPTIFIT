@@ -10,7 +10,7 @@ class AppColors {
   static const Color subtitleGray = Color(0x8A000000); // Colors.black54
   static const Color white70 = Color(0xB3FFFFFF); // Colors.white70
   static const Color redAccent = Color(0xFFFF5252);
-  static const Color screenBackground = Color(0xFFF0F4F8);
+  static const Color screenBackground = Color(0xFFDFF1F0);
   static const Color black = Color(0xFF000000);
   static const Color lightGreen = Color(0xFFE8F5E9);
   static const Color grey = Color(0xFF9E9E9E);
