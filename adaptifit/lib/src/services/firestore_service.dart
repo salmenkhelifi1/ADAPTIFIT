@@ -153,6 +153,21 @@ class FirestoreService {
             snapshot.docs.map((doc) => Nutrition.fromFirestore(doc)).toList());
   }
 
+  // NEW: Get a single nutrition plan by its associated Plan ID
+  Stream<Nutrition?> getNutritionByPlanId(String planId) {
+    return userDoc
+        .collection('nutrition')
+        .where('planId', isEqualTo: planId)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) {
+        return null; // Return null if no matching nutrition plan is found
+      }
+      return Nutrition.fromFirestore(snapshot.docs.first);
+    });
+  }
+
   // Get a single nutrition plan
   Stream<Nutrition> getNutrition(String nutritionId) {
     return userDoc

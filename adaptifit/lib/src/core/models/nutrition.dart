@@ -36,6 +36,7 @@ class Meal {
 class Nutrition {
   final String nutritionId;
   final String name; // e.g., "High Protein Focus"
+  final String? planId; // Added to link to a workout plan
   final Map<String, Meal>
       meals; // Keys: "breakfast", "lunch", "dinner", "snacks"
   final double hydrationGoal; // In Liters
@@ -45,6 +46,7 @@ class Nutrition {
   Nutrition({
     required this.nutritionId,
     this.name = '',
+    this.planId,
     this.meals = const {},
     this.hydrationGoal = 0.0,
     this.totalCalories = 0,
@@ -61,6 +63,7 @@ class Nutrition {
     return Nutrition(
       nutritionId: doc.id,
       name: data['name'] ?? 'Personalized meal plan',
+      planId: data['planId'],
       meals: mealsMap,
       hydrationGoal: (data['hydrationGoal'] as num?)?.toDouble() ?? 0.0,
       totalCalories: data['totalCalories'] ?? 0,
@@ -72,6 +75,7 @@ class Nutrition {
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
+      'planId': planId,
       // Convert the Meal objects back to Maps for Firestore
       'meals': meals.map((key, value) => MapEntry(key, value.toMap())),
       'hydrationGoal': hydrationGoal,
