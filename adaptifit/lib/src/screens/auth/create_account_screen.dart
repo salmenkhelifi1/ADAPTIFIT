@@ -1,11 +1,11 @@
+// lib/src/screens/auth/create_account_screen.dart
+
+import 'package:adaptifit/src/screens/auth/auth_gate.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'sign_in_screen.dart';
-// Note: OnboardingGoalsScreen is removed for now, as AuthGate will handle navigation
-// import '/src/screens/onboarding/onboarding_goals_screen.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
@@ -21,6 +21,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  // THIS FUNCTION IS NOW FULLY CORRECTED
   Future<void> _createAccount() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -31,29 +32,46 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     });
 
     try {
-      // Create the user
+      // Step 1: Create the user in Firebase Authentication
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // Update the user's profile and create a Firestore document
+      // Step 2: Create the user's document in Firestore
       if (userCredential.user != null) {
-        // Create the user document in Firestore
         await FirestoreService().createUserDocument(
           uid: userCredential.user!.uid,
           email: _emailController.text.trim(),
           firstName: _firstNameController.text.trim(),
         );
 
-        // Update the user's display name in Firebase Auth
+        // Step 3: Update the user's display name in Firebase Auth
         await userCredential.user!
             .updateDisplayName(_firstNameController.text.trim());
-      }
 
-      // After sign-up, AuthGate will automatically navigate to the main app.
-      // The screen will be unmounted, so no need to set isLoading back to false.
+        // Step 4: Show a success message to the user for feedback
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Success! Welcome to Adaptifit.'),
+              backgroundColor: AppColors.primaryGreen,
+            ),
+          );
+          // A short delay so the user has time to read the message
+          await Future.delayed(const Duration(seconds: 1));
+        }
+
+        // Step 5: Navigate away. This clears the screen stack and allows
+        // AuthGate to take over and show the correct screen (Onboarding).
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const AuthGate()),
+            (route) => false,
+          );
+        }
+      }
     } on FirebaseAuthException catch (e) {
       String message;
       if (e.code == 'weak-password') {
@@ -71,7 +89,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           ),
         );
       }
-    } finally {
+      // On error, stop loading so the user can try again.
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -90,6 +108,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The build method remains the same.
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
