@@ -77,6 +77,7 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.primaryGreen,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -85,7 +86,8 @@ class _SignInScreenState extends State<SignInScreen> {
             children: <Widget>[
               const Spacer(flex: 2),
               Image.asset(
-                'assets/images/app_icon.png', // Your app logo
+                'assets/images/Icon-App-60x60@3x.png', // Your app logo path
+
                 height: 100, // Adjust size as needed
               ),
               const SizedBox(height: 8),

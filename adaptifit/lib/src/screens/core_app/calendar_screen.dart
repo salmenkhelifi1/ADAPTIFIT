@@ -56,7 +56,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _calendarData = {
               for (var entry in snapshot.data!)
                 // FIX: Changed entry.date to entry.dateId
-                DateFormat('yyyy-MM-dd').parseUtc(entry.dateId): entry
+                DateFormat('yyyy-MM-dd').parse(entry.dateId): entry
             };
           }
           return Padding(

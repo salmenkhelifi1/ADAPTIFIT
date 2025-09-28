@@ -99,6 +99,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
+      backgroundColor: AppColors.primaryGreen,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),

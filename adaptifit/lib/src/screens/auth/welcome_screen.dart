@@ -9,41 +9,51 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the screen size for responsive design
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
+      backgroundColor: AppColors.primaryGreen,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              const Spacer(),
-              // Placeholder for your actual logo.
-              Image.asset(
-                'assets/images/app_icon.png', // Your app logo
-                height: 100, // Adjust size as needed
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                AppStrings.appName,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
+              // Use an Expanded widget to make the logo and text take up available space
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/images/Icon-App-60x60@3x.png', // Your app logo path
+                      // Make the logo width 35% of the screen width
+                      width: screenWidth * 0.35,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      AppStrings.appName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Smarter fitness. Better you.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.white70,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Smarter fitness. Better you.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.white70,
-                  fontSize: 18,
-                ),
-              ),
-              const Spacer(flex: 2),
+              // Buttons are kept at the bottom
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).push(
@@ -53,7 +63,7 @@ class WelcomeScreen extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: AppColors.white,
                   foregroundColor: AppColors.primaryGreen,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -87,7 +97,6 @@ class WelcomeScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
-              const Spacer(),
             ],
           ),
         ),

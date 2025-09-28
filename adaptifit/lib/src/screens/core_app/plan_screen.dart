@@ -1,3 +1,5 @@
+// lib/src/screens/core_app/plan_screen.dart
+
 import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
@@ -533,8 +535,6 @@ class _PlanScreenState extends State<PlanScreen> {
       {required String dayOfWeek,
       required String date,
       required String workoutName,
-      String? breakfast,
-      String? dinner,
       required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -556,23 +556,14 @@ class _PlanScreenState extends State<PlanScreen> {
               Text(_getWorkoutEmoji(workoutName),
                   style: const TextStyle(fontSize: 20)),
               const SizedBox(width: 10),
-              Text(workoutName,
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkText)),
+              Expanded(
+                child: Text(workoutName,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.darkText)),
+              ),
             ]),
-            if (breakfast != null || dinner != null) const SizedBox(height: 12),
-            if (breakfast != null) ...[
-              Text('Breakfast: $breakfast',
-                  style: const TextStyle(
-                      color: AppColors.subtitleGray, fontSize: 14)),
-              const SizedBox(height: 6),
-            ],
-            if (dinner != null)
-              Text('Dinner: $dinner',
-                  style: const TextStyle(
-                      color: AppColors.subtitleGray, fontSize: 14)),
             const SizedBox(height: 16),
             const Align(
                 alignment: Alignment.centerRight,

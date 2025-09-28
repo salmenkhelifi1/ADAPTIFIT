@@ -79,6 +79,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
+      backgroundColor: AppColors.primaryGreen,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),

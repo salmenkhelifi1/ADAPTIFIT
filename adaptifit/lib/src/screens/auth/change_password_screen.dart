@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:adaptifit/src/utils/message_utils.dart';
 
+import 'package:adaptifit/src/constants/app_colors.dart';
+
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
 
@@ -70,7 +72,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       showSnackBarMessage(context, message, isError: true);
     } catch (e) {
       if (!mounted) return;
-      showSnackBarMessage(context, 'An unexpected error occurred.', isError: true);
+      showSnackBarMessage(context, 'An unexpected error occurred.',
+          isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -83,6 +86,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.primaryGreen,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -182,7 +186,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _changePassword,
                         child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const CircularProgressIndicator(
+                                color: Colors.white)
                             : const Text('Update'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1EB955),

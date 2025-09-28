@@ -1,3 +1,5 @@
+// lib/src/screens/onboarding/onboarding_question_screen.dart
+
 import 'package:adaptifit/src/screens/onboarding/summary_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -5,11 +7,14 @@ import 'package:provider/provider.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/context/onboarding_provider.dart';
 
+// UPDATED: Added multiChoice type
 enum QuestionType {
   singleChoice,
+  multiChoice, // New
   textInput,
   textArea,
   diet,
+  numberInput,
 }
 
 class OnboardingQuestion {
@@ -41,19 +46,28 @@ class OnboardingQuestionScreen extends StatefulWidget {
 class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   int _currentQuestionIndex = 0;
 
+  // UPDATED: First question changed to multiChoice to match screenshot
   final List<OnboardingQuestion> _questions = [
     // 1. Fitness goal
     OnboardingQuestion(
-      title: 'What is your primary fitness goal?',
-      subtitle: 'This will help us tailor your plan to your desired outcome.',
-      type: QuestionType.singleChoice,
+      title: 'What is your main fitness goal?',
+      subtitle: 'You can choose more than one goal.',
+      type: QuestionType.multiChoice, // Changed type
       answerKey: 'fitnessGoal',
-      options: ['Build Muscle', 'Lose Fat', 'Improve Strength', 'General Fitness'],
+      options: [
+        'Build muscle',
+        'Lose fat',
+        'Improve endurance',
+        'Improve mobility',
+        'General wellness',
+        'Other'
+      ], // Changed options
     ),
     // 2. Experience level
     OnboardingQuestion(
       title: 'What is your fitness experience level?',
-      subtitle: 'This helps us set the right intensity and complexity for your workouts.',
+      subtitle:
+          'This helps us set the right intensity and complexity for your workouts.',
       type: QuestionType.singleChoice,
       answerKey: 'experienceLevel',
       options: ['Beginner', 'Intermediate', 'Advanced'],
@@ -61,26 +75,36 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     // 3. Injuries/limitations
     OnboardingQuestion(
       title: 'Do you have any injuries or physical limitations?',
-      subtitle: 'This helps us adapt your plan so you can train safely and effectively.',
-      type: QuestionType.textArea,
+      subtitle:
+          'This helps us adapt your plan so you can train safely and effectively.',
+      type: QuestionType.textInput,
       answerKey: 'injuries',
-      placeholders: ['e.g., shoulder impingement, knee pain, lower back issues'],
+      placeholders: ['e.g., shoulder impingement, knee pain, etc.'],
     ),
     // 4. Weekly workout frequency
     OnboardingQuestion(
       title: 'How many days per week can you realistically work out?',
-      subtitle: 'Be honest with yourself—consistency matters more than perfection. We’ll design your plan around your schedule.',
+      subtitle:
+          'Be honest with yourself—consistency matters more than perfection.',
       type: QuestionType.singleChoice,
       answerKey: 'workoutFrequency',
-      options: ['1-2 days', '3-4 days', '5-6 days', 'Every day'],
+      options: [
+        '1 day',
+        '2 days',
+        '3 days',
+        '4 days',
+        '5 days',
+        '6 days',
+        '7 days'
+      ],
     ),
     // 5. Plan duration
     OnboardingQuestion(
       title: 'How long would you like your personalized plan to last?',
-      subtitle: 'Choose a duration that fits your commitment level.',
-      type: QuestionType.singleChoice,
+      subtitle: 'Enter the duration in days.',
+      type: QuestionType.numberInput,
       answerKey: 'planDuration',
-      options: ['30 days', '60 days', '90 days'],
+      placeholders: ['e.g., 30'],
     ),
     // 6. Activity level
     OnboardingQuestion(
@@ -88,23 +112,33 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       subtitle: 'This helps us gauge your starting point.',
       type: QuestionType.singleChoice,
       answerKey: 'activityLevel',
-      options: ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'],
+      options: [
+        'Sedentary',
+        'Lightly Active',
+        'Moderately Active',
+        'Very Active'
+      ],
     ),
     // 7. Diet type/preferences
     OnboardingQuestion(
       title: 'Do you follow a specific diet or have nutrition preferences?',
-      subtitle: 'This helps us personalize your plan around your lifestyle. Add your diet style, macros, or calories if you’d like. If you skip, we’ll create only your workout plan and hide nutrition sections in the app.',
+      subtitle:
+          'If you skip, we’ll create only your workout plan and hide nutrition sections in the app.',
       type: QuestionType.diet,
       answerKey: 'diet',
-      placeholders: ['e.g., high protein, vegetarian, keto, plant-based', '2000 kcal or macros in grams', 'Enter custom dietary preferences'],
+      placeholders: [
+        'e.g., high protein, vegetarian, keto',
+        '2000 kcal or macros in grams',
+        'Enter custom dietary preferences'
+      ],
     ),
     // 8. Time per session
     OnboardingQuestion(
       title: 'How much time can you dedicate to each workout session?',
-      subtitle: 'This will help us tailor the length of your workouts.',
-      type: QuestionType.singleChoice,
+      subtitle: 'Enter the time in minutes.',
+      type: QuestionType.numberInput,
       answerKey: 'timePerSession',
-      options: ['15-30 minutes', '30-45 minutes', '45-60 minutes', '60+ minutes'],
+      placeholders: ['e.g., 45'],
     ),
     // 9. Access to gym/home equipment
     OnboardingQuestion(
@@ -118,17 +152,23 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     OnboardingQuestion(
       title: 'What equipment do you have access to?',
       subtitle: 'List all the equipment you have available for your workouts.',
-      type: QuestionType.textArea,
+      type: QuestionType.textInput,
       answerKey: 'equipmentList',
       placeholders: ['e.g., dumbbells, resistance bands, treadmill, etc.'],
     ),
     // 11. Preferred workout split
     OnboardingQuestion(
       title: 'What is your preferred workout split?',
-      subtitle: 'A workout split is how you organize your workouts throughout the week.',
+      subtitle:
+          'A workout split is how you organize your workouts throughout the week.',
       type: QuestionType.singleChoice,
       answerKey: 'workoutSplit',
-      options: ['Full Body', 'Upper/Lower', 'Push/Pull/Legs', 'Body Part Split'],
+      options: [
+        'Full Body',
+        'Upper/Lower',
+        'Push/Pull/Legs',
+        'Body Part Split'
+      ],
     ),
   ];
 
@@ -163,7 +203,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       final provider = Provider.of<OnboardingProvider>(context, listen: false);
       final answer = provider.answers['gymAccess'];
       if (answer == 'Gym') {
-        final splitIndex = _questions.indexWhere((q) => q.answerKey == 'workoutSplit');
+        final splitIndex =
+            _questions.indexWhere((q) => q.answerKey == 'workoutSplit');
         setState(() {
           _currentQuestionIndex = splitIndex;
           _loadAnswerForCurrentQuestion();
@@ -178,7 +219,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
         _loadAnswerForCurrentQuestion();
       });
     } else {
-      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SummaryScreen()));
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (context) => const SummaryScreen()));
     }
   }
 
@@ -188,7 +230,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       final provider = Provider.of<OnboardingProvider>(context, listen: false);
       final answer = provider.answers['gymAccess'];
       if (answer == 'Gym') {
-        final gymAccessIndex = _questions.indexWhere((q) => q.answerKey == 'gymAccess');
+        final gymAccessIndex =
+            _questions.indexWhere((q) => q.answerKey == 'gymAccess');
         setState(() {
           _currentQuestionIndex = gymAccessIndex;
           _loadAnswerForCurrentQuestion();
@@ -227,9 +270,11 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
 
     switch (question.type) {
       case QuestionType.singleChoice:
+      case QuestionType.multiChoice:
         break;
       case QuestionType.textInput:
       case QuestionType.textArea:
+      case QuestionType.numberInput:
         if (answer is String) _textController.text = answer;
         break;
       case QuestionType.diet:
@@ -254,10 +299,14 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       switch (currentQuestion.type) {
         case QuestionType.singleChoice:
           return answer.toString().isNotEmpty;
+        case QuestionType.multiChoice:
+          return (answer as List).isNotEmpty;
         case QuestionType.textInput:
         case QuestionType.textArea:
+        case QuestionType.numberInput:
           return answer.toString().isNotEmpty;
         case QuestionType.diet:
+          if (answer['skipped'] == true) return true;
           return (answer['style']?.isNotEmpty ?? false) ||
               (answer['macros']?.isNotEmpty ?? false) ||
               (answer['custom']?.isNotEmpty ?? false);
@@ -266,67 +315,81 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.neutralGray,
-      appBar: AppBar(
-        backgroundColor: AppColors.neutralGray,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.darkText),
-          onPressed: _previousQuestion,
-        ),
-      ),
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
+            _buildHeader(),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    Text(
-                      currentQuestion.title,
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      currentQuestion.subtitle,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: AppColors.subtitleGray,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    _buildInputArea(currentQuestion),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: ElevatedButton(
-                onPressed: isNextEnabled() ? _nextQuestion : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
-                  disabledBackgroundColor: AppColors.timestampGray,
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
                   ),
                 ),
-                child: Text(
-                        _currentQuestionIndex == _questions.length - 1
-                            ? 'Review Answers'
-                            : 'Next',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.white,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 40),
+                            Text(
+                              currentQuestion.title,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkText,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              currentQuestion.subtitle,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: AppColors.subtitleGray,
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                            _buildInputArea(currentQuestion),
+                          ],
                         ),
                       ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                      child: ElevatedButton(
+                        onPressed: isNextEnabled() ? _nextQuestion : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          disabledBackgroundColor: AppColors.lightGrey2,
+                          minimumSize: const Size(double.infinity, 56),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          _currentQuestionIndex == _questions.length - 1
+                              ? 'Review Answers'
+                              : 'Next',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isNextEnabled()
+                                ? AppColors.white
+                                : AppColors.subtitleGray,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -335,17 +398,131 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
     );
   }
 
+  Widget _buildHeader() {
+    return Container(
+      color: AppColors.primaryGreen,
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Back button is now part of the content flow, not a floating AppBar button
+          if (_currentQuestionIndex > 0)
+            GestureDetector(
+              onTap: _previousQuestion,
+              child:
+                  const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+            )
+          else // Placeholder to keep layout consistent on the first question
+            const SizedBox(height: 28),
+          const SizedBox(height: 20),
+          const Text(
+            "Let's Begin",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Adaptifit creates a personalized fitness and\nnutrition plan just for you",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputArea(OnboardingQuestion question) {
     switch (question.type) {
       case QuestionType.singleChoice:
         return _buildSingleChoiceList(question);
+      case QuestionType.multiChoice:
+        return _buildMultiChoiceList(question);
       case QuestionType.textInput:
         return _buildTextInput(question, _textController);
       case QuestionType.textArea:
         return _buildTextArea(question, _textController);
       case QuestionType.diet:
         return _buildDietForm(question);
+      case QuestionType.numberInput:
+        return _buildNumberInput(question, _textController);
     }
+  }
+
+  Widget _buildMultiChoiceList(OnboardingQuestion question) {
+    final provider = Provider.of<OnboardingProvider>(context);
+    // Ensure the answer is a list, defaulting to an empty one if null or wrong type
+    final selectedOptions =
+        (provider.answers[question.answerKey] as List?)?.cast<String>() ?? [];
+
+    return Column(
+      children: question.options.map((option) {
+        final isSelected = selectedOptions.contains(option);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: GestureDetector(
+            onTap: () {
+              final newSelection = List<String>.from(selectedOptions);
+              if (isSelected) {
+                newSelection.remove(option);
+              } else {
+                newSelection.add(option);
+              }
+              _updateProviderAnswer(question.answerKey, newSelection);
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primaryGreen
+                      : AppColors.timestampGray,
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    option,
+                    style: const TextStyle(
+                      color: AppColors.darkText,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primaryGreen
+                            : AppColors.subtitleGray,
+                        width: 2,
+                      ),
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check,
+                            size: 16, color: AppColors.primaryGreen)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Widget _buildSingleChoiceList(OnboardingQuestion question) {
@@ -356,7 +533,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       children: question.options.map((option) {
         final isSelected = selectedOption == option;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
+          padding: const EdgeInsets.only(bottom: 12.0),
           child: GestureDetector(
             onTap: () => _updateProviderAnswer(question.answerKey, option),
             child: Container(
@@ -364,8 +541,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primaryGreen.withOpacity(0.2)
-                    : AppColors.white,
+                    ? AppColors.primaryGreen.withOpacity(0.1)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected
@@ -379,7 +556,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppColors.darkText,
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -387,6 +564,29 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildNumberInput(
+      OnboardingQuestion question, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      onChanged: (text) => _updateProviderAnswer(question.answerKey, text),
+      decoration: InputDecoration(
+        hintText: question.placeholders.first,
+        filled: true,
+        fillColor: AppColors.neutralGray.withOpacity(0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+        ),
+      ),
     );
   }
 
@@ -398,20 +598,15 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       decoration: InputDecoration(
         hintText: question.placeholders.first,
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: AppColors.neutralGray.withOpacity(0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.timestampGray, width: 1.5),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: AppColors.primaryGreen, width: 2.0),
+              const BorderSide(color: AppColors.primaryGreen, width: 1.5),
         ),
       ),
     );
@@ -426,26 +621,34 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
       decoration: InputDecoration(
         hintText: question.placeholders.first,
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: AppColors.neutralGray.withOpacity(0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.primaryGreen, width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.timestampGray, width: 1.5),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: AppColors.primaryGreen, width: 2.0),
+              const BorderSide(color: AppColors.primaryGreen, width: 1.5),
         ),
       ),
     );
   }
 
   Widget _buildDietForm(OnboardingQuestion question) {
+    final inputDecoration = InputDecoration(
+      filled: true,
+      fillColor: AppColors.neutralGray.withOpacity(0.5),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+      ),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -456,14 +659,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
             'macros': _dietMacrosController.text,
             'custom': _dietCustomController.text,
           }),
-          decoration: InputDecoration(
+          decoration: inputDecoration.copyWith(
             hintText: question.placeholders[0],
-            filled: true,
-            fillColor: AppColors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -474,14 +671,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
             'macros': text,
             'custom': _dietCustomController.text,
           }),
-          decoration: InputDecoration(
+          decoration: inputDecoration.copyWith(
             hintText: question.placeholders[1],
-            filled: true,
-            fillColor: AppColors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -492,14 +683,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
             'macros': _dietMacrosController.text,
             'custom': text,
           }),
-          decoration: InputDecoration(
+          decoration: inputDecoration.copyWith(
             hintText: question.placeholders[2],
-            filled: true,
-            fillColor: AppColors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
           ),
         ),
         const SizedBox(height: 20),

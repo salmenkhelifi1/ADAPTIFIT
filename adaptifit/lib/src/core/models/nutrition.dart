@@ -1,3 +1,5 @@
+// lib/src/core/models/nutrition.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Meal {
@@ -22,7 +24,6 @@ class Meal {
     );
   }
 
-  // Method to convert a Meal object to a Map
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -35,22 +36,25 @@ class Meal {
 
 class Nutrition {
   final String nutritionId;
-  final String name; // e.g., "High Protein Focus"
+  final String name;
   final String? planId; // Added to link to a workout plan
-  final Map<String, Meal>
-      meals; // Keys: "breakfast", "lunch", "dinner", "snacks"
-  final double hydrationGoal; // In Liters
-  final int totalCalories;
-  final int totalProtein;
+  final Map<String, Meal> meals;
+  final String? dailyWater;
+  final int dailyCalories;
+  final List<String> guidelines;
+  final List<String> mealSuggestions;
+  final Map<String, String> macros;
 
   Nutrition({
     required this.nutritionId,
     this.name = '',
     this.planId,
     this.meals = const {},
-    this.hydrationGoal = 0.0,
-    this.totalCalories = 0,
-    this.totalProtein = 0,
+    this.dailyWater,
+    this.dailyCalories = 0,
+    this.guidelines = const [],
+    this.mealSuggestions = const [],
+    this.macros = const {},
   });
 
   factory Nutrition.fromFirestore(DocumentSnapshot doc) {
@@ -60,27 +64,39 @@ class Nutrition {
       return MapEntry(key, Meal.fromMap(value as Map<String, dynamic>));
     });
 
+    // Generate a name from meal suggestions if 'name' is not present
+    String planName = data['name'] ?? 'Personalized Meal Plan';
+    if ((data['name'] == null || data['name'].isEmpty) &&
+        (data['mealSuggestions'] as List).isNotEmpty) {
+      planName = (data['mealSuggestions'] as List<dynamic>)
+          .first
+          .toString()
+          .split(':')[0];
+    }
+
     return Nutrition(
       nutritionId: doc.id,
-      name: data['name'] ?? 'Personalized meal plan',
       planId: data['planId'],
+      name: planName,
       meals: mealsMap,
-      hydrationGoal: (data['hydrationGoal'] as num?)?.toDouble() ?? 0.0,
-      totalCalories: data['totalCalories'] ?? 0,
-      totalProtein: data['totalProtein'] ?? 0,
+      dailyWater: data['dailyWater'],
+      dailyCalories: data['dailyCalories'] ?? 0,
+      guidelines: List<String>.from(data['guidelines'] ?? []),
+      mealSuggestions: List<String>.from(data['mealSuggestions'] ?? []),
+      macros: Map<String, String>.from(data['macros'] ?? {}),
     );
   }
 
-  // FIX: Added the missing toFirestore method
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
       'planId': planId,
-      // Convert the Meal objects back to Maps for Firestore
       'meals': meals.map((key, value) => MapEntry(key, value.toMap())),
-      'hydrationGoal': hydrationGoal,
-      'totalCalories': totalCalories,
-      'totalProtein': totalProtein,
+      'dailyWater': dailyWater,
+      'dailyCalories': dailyCalories,
+      'guidelines': guidelines,
+      'mealSuggestions': mealSuggestions,
+      'macros': macros,
     };
   }
 }
