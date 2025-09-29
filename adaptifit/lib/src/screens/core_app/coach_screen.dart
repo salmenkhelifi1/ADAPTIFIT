@@ -134,7 +134,8 @@ class _CoachScreenState extends State<CoachScreen> {
                 if (_isLoading && index == 0) {
                   return const TypingIndicator();
                 }
-                final message = _messages[index - (_isLoading ? 0 : 0)]; // Adjust index if typing indicator is present
+                // When loading, subtract 1 from the index to account for the typing indicator.
+                final message = _messages[index - (_isLoading ? 1 : 0)];
                 return ChatBubble(
                   text: message.text,
                   time: DateFormat('h:mm a').format(message.timestamp),
