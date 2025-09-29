@@ -120,9 +120,9 @@ class FirestoreService {
     final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
     return userDoc
         .collection('calendar')
-        .where(FieldPath.documentId, isGreaterThan: todayStr)
+        .where(FieldPath.documentId, isGreaterThanOrEqualTo: todayStr)
         .orderBy(FieldPath.documentId)
-        .limit(7) // Fetch the next 7 days
+        .limit(7) // Fetch today and the next 6 days
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map((doc) => Calendar.fromFirestore(doc)).toList());
@@ -131,6 +131,13 @@ class FirestoreService {
   // Set or update a calendar entry
   Future<void> setCalendarEntry(String date, Calendar data) {
     return userDoc.collection('calendar').doc(date).set(data.toFirestore());
+  }
+
+  // NEW: Update the completion status of a calendar entry
+  Future<void> updateCalendarEntryCompletion(String date, bool isCompleted) {
+    return userDoc.collection('calendar').doc(date).update({
+      'completed': isCompleted,
+    });
   }
 
   //-- Nutrition --//

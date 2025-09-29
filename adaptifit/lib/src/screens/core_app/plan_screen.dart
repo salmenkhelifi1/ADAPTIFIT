@@ -173,21 +173,48 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
+  // UPDATED: This method now fetches real-time progress stats
   Widget _buildWeeklyProgress() {
-    return StreamBuilder<UserModel>(
-      stream: _firestoreService.getUser(),
-      builder: (context, userSnapshot) {
-        if (!userSnapshot.hasData) {
-          return _buildWeeklyProgressCard(0, 7, 0, 21); // Placeholder
+    return FutureBuilder<Map<String, int>>(
+      future: _firestoreService.getUserProgressStats(),
+      builder: (context, statsSnapshot) {
+        if (statsSnapshot.connectionState == ConnectionState.waiting) {
+          // Show a placeholder with shimmer or just a simple card while loading
+          return _buildWeeklyProgressCard(0, 0, 0, 0);
         }
-        final user = userSnapshot.data!;
-        final progress = user.progress;
-        final completedWorkouts = progress['completedWorkouts'] ?? 0;
-        final totalWorkouts = user.daysPerWeek;
-        final completedMeals = progress['mealsCompleted'] ?? 0;
-        final totalMeals = totalWorkouts * 3;
-        return _buildWeeklyProgressCard(
-            completedWorkouts, totalWorkouts, completedMeals, totalMeals);
+
+        if (statsSnapshot.hasError) {
+          return _buildStyledContainer(
+              child: const Text("Error loading progress."));
+        }
+
+        if (!statsSnapshot.hasData) {
+          return _buildWeeklyProgressCard(
+              0, 0, 0, 0); // Should not happen if future completes
+        }
+
+        final stats = statsSnapshot.data!;
+        final completedWorkouts = stats['completedWorkouts'] ?? 0;
+        final completedMeals = stats['mealsCompleted'] ?? 0;
+
+        // Now, we still need the total number of workouts for the week.
+        // We can get this from the user's stream.
+        return StreamBuilder<UserModel>(
+          stream: _firestoreService.getUser(),
+          builder: (context, userSnapshot) {
+            if (!userSnapshot.hasData) {
+              // User data is still loading, show stats with default totals
+              return _buildWeeklyProgressCard(
+                  completedWorkouts, 7, completedMeals, 21);
+            }
+            final user = userSnapshot.data!;
+            final totalWorkouts = user.daysPerWeek;
+            final totalMeals = totalWorkouts * 3;
+
+            return _buildWeeklyProgressCard(
+                completedWorkouts, totalWorkouts, completedMeals, totalMeals);
+          },
+        );
       },
     );
   }
