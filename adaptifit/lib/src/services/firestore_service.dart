@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:adaptifit/src/core/models/models.dart';
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 import 'package:intl/intl.dart';
 
 class FirestoreService {
@@ -114,7 +115,7 @@ class FirestoreService {
         snapshot.docs.map((doc) => Calendar.fromFirestore(doc)).toList());
   }
 
-  // NEW: Get upcoming calendar entries for the next 7 days
+  // Get upcoming calendar entries for the next 7 days
   Stream<List<Calendar>> getUpcomingCalendarEntries() {
     final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
     return userDoc
@@ -153,7 +154,7 @@ class FirestoreService {
             snapshot.docs.map((doc) => Nutrition.fromFirestore(doc)).toList());
   }
 
-  // NEW: Get a single nutrition plan by its associated Plan ID
+  // Get a single nutrition plan by its associated Plan ID
   Stream<Nutrition?> getNutritionByPlanId(String planId) {
     return userDoc
         .collection('nutrition')
@@ -211,5 +212,63 @@ class FirestoreService {
         .map((snapshot) => snapshot.docs
             .map((doc) => ChatMessage.fromFirestore(doc.data()))
             .toList());
+  }
+
+  //-- Progress Stats --//
+  /// Calculates user progress stats by querying the database.
+  Future<Map<String, int>> getUserProgressStats() async {
+    final user = currentUser;
+    if (user == null) {
+      debugPrint('[Stats] User not logged in, returning zeros.');
+      return {'completedWorkouts': 0, 'mealsCompleted': 0, 'weeks': 0};
+    }
+
+    debugPrint(
+        '[Stats] Starting to fetch progress stats for user: ${user.uid}');
+
+    final userDocument = await userDoc.get();
+    if (!userDocument.exists) {
+      debugPrint('[Stats] User document not found!');
+      throw Exception('User document not found!');
+    }
+
+    final calendarRef = userDoc.collection('calendar');
+
+    final workoutQuery = calendarRef
+        .where('hasWorkout', isEqualTo: true)
+        .where('completed', isEqualTo: true)
+        .count();
+
+    final mealQuery = calendarRef
+        .where('hasNutrition', isEqualTo: true)
+        .where('completed', isEqualTo: true)
+        .count();
+
+    final responses = await Future.wait([
+      workoutQuery.get(),
+      mealQuery.get(),
+    ]);
+
+    final completedWorkouts = responses[0].count ?? 0;
+    final mealsCompleted = responses[1].count ?? 0;
+
+    debugPrint('[Stats] Completed Workouts Found: $completedWorkouts');
+    debugPrint('[Stats] Completed Meals Found: $mealsCompleted');
+
+    final createdAtTimestamp = userDocument.data()?['createdAt'] as Timestamp;
+    final createdAtDate = createdAtTimestamp.toDate();
+    final weeks = DateTime.now().difference(createdAtDate).inDays ~/ 7;
+
+    debugPrint('[Stats] Weeks since creation: $weeks');
+
+    final result = {
+      'completedWorkouts': completedWorkouts,
+      'mealsCompleted': mealsCompleted,
+      'weeks': weeks,
+    };
+
+    debugPrint('[Stats] Returning final stats: $result');
+
+    return result;
   }
 }

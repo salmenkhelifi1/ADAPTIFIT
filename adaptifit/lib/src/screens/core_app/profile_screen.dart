@@ -1,15 +1,16 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
-import 'package:adaptifit/src/screens/core_app/badges_streaks_screen.dart';
-import 'package:adaptifit/src/screens/core_app/injury_adaptation_notes_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+
 import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/screens/auth/change_password_screen.dart';
 import 'package:adaptifit/src/screens/auth/welcome_screen.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:adaptifit/src/services/n8n_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:adaptifit/src/screens/core_app/rewrite_plan_screen.dart';
+import 'package:adaptifit/src/screens/core_app/injury_adaptation_notes_screen.dart';
+import 'package:adaptifit/src/screens/core_app/badges_streaks_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -45,25 +46,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor:
+          AppColors.neutralGray, // Set background color for the whole screen
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: AppColors.neutralGray,
+        backgroundColor: Colors.transparent, // Make AppBar transparent
         elevation: 0,
         title: const Text('Profile',
             style: TextStyle(
                 color: AppColors.darkText,
                 fontWeight: FontWeight.bold,
                 fontSize: 28)),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
-              backgroundColor: AppColors.primaryGreen,
-              child: Text('A',
+              backgroundColor: AppColors.primaryGreen.withOpacity(0.2),
+              child: const Text('A', // Placeholder for your app logo
                   style: TextStyle(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20)),
+                      color: AppColors.primaryGreen,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18)),
             ),
           ),
         ],
@@ -75,31 +78,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Error loading profile: ${snapshot.error}',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
           if (!snapshot.hasData) {
-            return const Center(child: Text('Could not find user profile.'));
+            return const Center(child: Text('User profile not found.'));
           }
 
           final user = snapshot.data!;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Column(
               children: [
                 _buildProfileHeader(user),
                 const SizedBox(height: 24),
                 _buildAccountInfoCard(user),
                 const SizedBox(height: 24),
-                _buildProgressCard(user),
+                _buildProgressCard(), // Use the new dynamic progress card
                 const SizedBox(height: 24),
                 _buildNotesCard(),
                 const SizedBox(height: 24),
@@ -111,15 +107,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   isPrimary: true,
                   onPressed: () {
                     Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RewritePlanScreen(
-                          userId: user.id,
-                          onboardingAnswers: user.onboardingAnswers,
-                          n8nService: _n8nService,
-                        ),
-                      ),
-                    );
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => RewritePlanScreen(
+                                userId: user.id,
+                                onboardingAnswers: user.onboardingAnswers,
+                                n8nService: _n8nService)));
                   },
                 ),
                 const SizedBox(height: 16),
@@ -128,20 +121,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   text: 'Change Password',
                   onPressed: () {
                     Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ChangePasswordScreen(),
-                      ),
-                    );
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const ChangePasswordScreen()));
                   },
                 ),
                 const SizedBox(height: 16),
                 _buildLogoutButton(),
                 const SizedBox(height: 24),
-                const Text(
-                  'Adaptifit v2.1.0',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
+                const Text('Adaptifit v2.1.0',
+                    style: TextStyle(color: Colors.grey, fontSize: 14)),
+                const SizedBox(height: 16),
               ],
             ),
           );
@@ -150,61 +141,148 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // A standalone card for the main profile header
   Widget _buildProfileHeader(UserModel user) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 40,
-          backgroundColor: AppColors.primaryGreen,
-          child: Text(
-            user.name.isNotEmpty
-                ? user.name.substring(0, 1).toUpperCase()
-                : '?',
-            style: const TextStyle(
-                color: AppColors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.bold),
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: _cardDecoration(),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: AppColors.primaryGreen,
+            child: Text(
+              user.name.isNotEmpty
+                  ? user.name.substring(0, 1).toUpperCase()
+                  : '?',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold),
+            ),
           ),
-        ),
-        const SizedBox(width: 20),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(user.name,
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text(
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(user.name,
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.darkText)),
+              const SizedBox(height: 4),
+              Text(
                 'Member since ${DateFormat('MMM yyyy').format(user.createdAt.toDate())}',
-                style: const TextStyle(color: AppColors.grey, fontSize: 15)),
-          ],
-        ),
-      ],
+                style: const TextStyle(color: AppColors.grey, fontSize: 14),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // A generic card widget to keep styling consistent
+  Widget _buildInfoCard({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkText)),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
     );
   }
 
   Widget _buildAccountInfoCard(UserModel user) {
     return _buildInfoCard(
       title: 'Account Information',
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.lightGrey,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.email_outlined, color: AppColors.darkGrey),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.neutralGray, // Inset background color
+          borderRadius: BorderRadius.circular(12),
         ),
-        title: const Text('Email', style: TextStyle(color: AppColors.grey)),
-        subtitle: Text(
-          user.email,
-          style: const TextStyle(
-              color: AppColors.darkText,
-              fontSize: 16,
-              fontWeight: FontWeight.bold),
+        child: Row(
+          children: [
+            const Icon(Icons.email_outlined, color: AppColors.darkGrey),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Email',
+                    style: TextStyle(color: AppColors.grey, fontSize: 12)),
+                const SizedBox(height: 2),
+                Text(
+                  user.email,
+                  style: const TextStyle(
+                      color: AppColors.darkText,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProgressCard() {
+    return FutureBuilder<Map<String, int>>(
+      future: _firestoreService.getUserProgressStats(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildInfoCard(
+            title: 'Your Progress',
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32.0),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return _buildInfoCard(
+            title: 'Your Progress',
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(child: Text('Could not load progress.')),
+            ),
+          );
+        }
+
+        final progressData = snapshot.data ?? {};
+        final completedWorkouts =
+            progressData['completedWorkouts']?.toString() ?? '0';
+        final mealsCompleted =
+            progressData['mealsCompleted']?.toString() ?? '0';
+        final weeks = progressData['weeks']?.toString() ?? '0';
+
+        return _buildInfoCard(
+          title: 'Your Progress',
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatColumn(completedWorkouts, 'Workouts'),
+                _buildStatColumn(mealsCompleted, 'Meals Completed'),
+                _buildStatColumn(weeks, 'Weeks'),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -212,62 +290,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return GestureDetector(
       onTap: () {
         Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const InjuryAdaptationNotesScreen(),
-          ),
-        );
+            context,
+            MaterialPageRoute(
+                builder: (context) => const InjuryAdaptationNotesScreen()));
       },
-      child: _buildInfoCard(
-        title: 'Injury / Adaptation Notes',
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Column(
-            children: [
-              Icon(Icons.notes_outlined, size: 48, color: AppColors.lightGrey2),
-              const SizedBox(height: 16),
-              const Text(
-                'Track any injuries, modifications, or special adaptations for your workouts',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.grey, fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogoutButton() {
-    return TextButton(
-      onPressed: _signOut,
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.logout, color: AppColors.grey),
-          SizedBox(width: 8),
-          Text('Logout', style: TextStyle(color: AppColors.grey, fontSize: 16)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressCard(UserModel user) {
-    final progress = user.progress;
-    final completedWorkouts = progress['completedWorkouts']?.toString() ?? '0';
-    final mealsCompleted = progress['mealsCompleted']?.toString() ?? '0';
-    final weeks = progress['weeks']?.toString() ?? '0';
-
-    return _buildInfoCard(
-      title: 'Your Progress',
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: _cardDecoration(),
+        child: Column(
           children: [
-            _buildStatColumn(completedWorkouts, 'Workouts'),
-            _buildStatColumn(mealsCompleted, 'Meals Completed'),
-            _buildStatColumn(weeks, 'Weeks'),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: AppColors.lightGrey2,
+                    width: 2,
+                    style: BorderStyle.solid),
+              ),
+              child: const Icon(Icons.description_outlined,
+                  size: 28, color: AppColors.darkGrey),
+            ),
+            const SizedBox(height: 12),
+            const Text('Injury / Adaptation Notes',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkText)),
+            const SizedBox(height: 8),
+            const Text(
+              'Track any injuries, modifications, or special adaptations for your workouts',
+              textAlign: TextAlign.center,
+              style:
+                  TextStyle(color: AppColors.grey, fontSize: 15, height: 1.3),
+            ),
           ],
         ),
       ),
@@ -278,36 +334,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return GestureDetector(
       onTap: () {
         Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const BadgesStreaksScreen(),
-          ),
-        );
+            context,
+            MaterialPageRoute(
+                builder: (context) => const BadgesStreaksScreen()));
       },
-      child: _buildInfoCard(
-        title: 'Badges & Streaks',
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildBadgeIconPlaceholder(Icons.person_outline),
-                  const SizedBox(width: 24),
-                  _buildBadgeIconPlaceholder(Icons.track_changes_outlined),
-                  const SizedBox(width: 24),
-                  _buildBadgeIconPlaceholder(Icons.calendar_today_outlined),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Earn badges and maintain streaks as you progress through your fitness journey',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.grey, fontSize: 16),
-              ),
-            ],
-          ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: _cardDecoration(),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildBadgeIconPlaceholder(Icons.emoji_events_outlined),
+                const SizedBox(width: 20),
+                _buildBadgeIconPlaceholder(
+                    Icons.local_fire_department_outlined),
+                const SizedBox(width: 20),
+                _buildBadgeIconPlaceholder(Icons.calendar_today_outlined),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text('Badges & Streaks',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkText)),
+            const SizedBox(height: 8),
+            const Text(
+              'Earn badges and maintain streaks as you progress through your fitness journey',
+              textAlign: TextAlign.center,
+              style:
+                  TextStyle(color: AppColors.grey, fontSize: 15, height: 1.3),
+            ),
+          ],
         ),
       ),
     );
@@ -315,98 +375,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildBadgeIconPlaceholder(IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.lightGrey,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.neutralGray,
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(icon, color: AppColors.mediumGrey, size: 32),
+      child: Icon(icon, color: AppColors.darkGrey, size: 28),
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String text,
-    bool isPrimary = false,
-    required VoidCallback onPressed,
-  }) {
+  Widget _buildActionButton(
+      {required IconData icon,
+      required String text,
+      bool isPrimary = false,
+      required VoidCallback onPressed}) {
     final color = isPrimary ? AppColors.white : AppColors.primaryGreen;
     final backgroundColor =
-        isPrimary ? AppColors.primaryGreen : AppColors.white;
+        isPrimary ? AppColors.primaryGreen : Colors.transparent;
+    final borderColor = isPrimary ? Colors.transparent : AppColors.primaryGreen;
 
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        foregroundColor: color,
-        backgroundColor: backgroundColor,
-        elevation: 0,
-        minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-          side: BorderSide(
-            color: isPrimary ? Colors.transparent : AppColors.primaryGreen,
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          foregroundColor: color,
+          backgroundColor: backgroundColor,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+            side: BorderSide(color: borderColor, width: 1.5),
           ),
         ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 12),
+            Text(text,
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
-      child: Row(
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return TextButton(
+      onPressed: _signOut,
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.grey,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+      ),
+      child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          Icon(Icons.logout, size: 20),
+          SizedBox(width: 8),
+          Text('Logout',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  Widget _buildInfoCard({required String title, required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.grey.withAlpha(25),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
+  Widget _buildStatColumn(String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value,
+            style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkText)),
+        const SizedBox(height: 4),
+        Text(label,
+            style: const TextStyle(color: AppColors.grey, fontSize: 14)),
+      ],
     );
   }
-}
 
-Widget _buildStatColumn(String value, String label) {
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(
-        value,
-        style: const TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: AppColors.strongBlue,
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withOpacity(0.1),
+          spreadRadius: 1,
+          blurRadius: 10,
+          offset: const Offset(0, 5),
         ),
-      ),
-      const SizedBox(height: 8),
-      Text(label, style: const TextStyle(color: AppColors.grey, fontSize: 16)),
-    ],
-  );
+      ],
+    );
+  }
 }
