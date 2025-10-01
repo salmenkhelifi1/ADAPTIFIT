@@ -1,14 +1,23 @@
 // lib/src/screens/core_app/plan_screen.dart
 
 import 'package:adaptifit/src/core/models/models.dart';
+
 import 'package:adaptifit/src/constants/app_colors.dart';
+
 import 'package:adaptifit/src/services/firestore_service.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:flutter/material.dart';
+
 import 'package:adaptifit/src/screens/core_app/calendar_screen.dart';
+
 import 'package:adaptifit/src/screens/core_app/workout_overview_screen.dart';
+
 import 'package:adaptifit/src/screens/core_app/nutrition_overview_screen.dart';
+
 import 'package:adaptifit/src/screens/core_app/daily_plan_detail_screen.dart';
+
 import 'package:intl/intl.dart';
 
 class PlanScreen extends StatefulWidget {
@@ -20,15 +29,30 @@ class PlanScreen extends StatefulWidget {
 
 class _PlanScreenState extends State<PlanScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+
   Stream<List<Plan>>? _plansStream;
+
   final User? _currentUser = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
     super.initState();
+
     if (_currentUser != null) {
-      // Stream for the new "Your Workout Library" section
       _plansStream = _firestoreService.getPlans();
+    }
+  }
+
+  Future<void> _toggleCompletion(String date, bool currentStatus) async {
+    try {
+      await _firestoreService.updateCalendarEntryCompletion(
+          date, !currentStatus);
+    } catch (e) {
+      debugPrint("Error updating completion status: $e");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update status.')),
+      );
     }
   }
 
@@ -37,17 +61,21 @@ class _PlanScreenState extends State<PlanScreen> {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     return Scaffold(
-      backgroundColor: AppColors.screenBackground,
+      backgroundColor: AppColors.screenBackground, // Updated background color
+
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // --- Header ---
+
               _buildHeader(context),
+
               const SizedBox(height: 20),
 
               // --- Today's Plan Section ---
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: _buildSectionHeader(
@@ -64,29 +92,40 @@ class _PlanScreenState extends State<PlanScreen> {
                   },
                 ),
               ),
+
               const SizedBox(height: 10),
+
               _buildTodaysPlan(today),
+
               const SizedBox(height: 24),
 
               // --- Weekly Progress Section ---
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: _buildSectionHeader(title: "Weekly Progress"),
               ),
+
               const SizedBox(height: 10),
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: _buildWeeklyProgress(),
               ),
+
               const SizedBox(height: 24),
 
               // --- Upcoming Plans Section (UPDATED LOGIC) ---
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: _buildSectionHeader(title: "Your Workout Library"),
               ),
+
               const SizedBox(height: 10),
+
               _buildWorkoutLibraryList(),
+
               const SizedBox(height: 20),
             ],
           ),
@@ -98,88 +137,55 @@ class _PlanScreenState extends State<PlanScreen> {
   Widget _buildTodaysPlan(String today) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: StreamBuilder<UserModel>(
-        stream: _firestoreService.getUser(),
-        builder: (context, userSnapshot) {
-          if (userSnapshot.connectionState == ConnectionState.waiting) {
+      child: StreamBuilder<Calendar>(
+        stream: _firestoreService.getCalendarEntry(today),
+        builder: (context, calendarSnapshot) {
+          if (calendarSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final user = userSnapshot.data;
 
-          return StreamBuilder<Calendar>(
-            stream: _firestoreService.getCalendarEntry(today),
-            builder: (context, calendarSnapshot) {
-              if (calendarSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          if (!calendarSnapshot.hasData || calendarSnapshot.data == null) {
+            return _buildNoPlanCard(title: "Rest Day");
+          }
 
-              if (user != null &&
-                  user.onboardingCompleted &&
-                  !calendarSnapshot.hasData) {
-                return _buildGeneratingPlanCard();
-              }
+          final calendarDay = calendarSnapshot.data!;
 
-              if (!calendarSnapshot.hasData || calendarSnapshot.data == null) {
-                return _buildNoPlanCard(title: "Rest Day");
-              }
+          return Column(
+            children: [
+              if (calendarDay.hasWorkout &&
+                  calendarDay.planId != null &&
+                  calendarDay.workoutId != null)
+                StreamBuilder<Workout>(
+                  stream: _firestoreService.getWorkout(
+                      calendarDay.planId!, calendarDay.workoutId!),
+                  builder: (context, workoutSnapshot) {
+                    if (workoutSnapshot.hasData) {
+                      return _buildWorkoutCard(
+                          workoutSnapshot.data!, calendarDay);
+                    }
 
-              final calendarDay = calendarSnapshot.data!;
-
-              return Column(
-                children: [
-                  if (calendarDay.hasWorkout &&
-                      calendarDay.planId != null &&
-                      calendarDay.workoutId != null)
-                    StreamBuilder<Workout>(
-                      stream: _firestoreService.getWorkout(
-                          calendarDay.planId!, calendarDay.workoutId!),
-                      builder: (context, workoutSnapshot) {
-                        if (workoutSnapshot.hasData) {
-                          return _buildWorkoutCard(workoutSnapshot.data!);
-                        }
-                        return const Center(child: CircularProgressIndicator());
-                      },
-                    )
-                  else
-                    _buildNoPlanCard(
-                        title: "Rest Day", message: "Enjoy your day off!"),
-                  if (calendarDay.hasNutrition) ...[
-                    const SizedBox(height: 16),
-                    StreamBuilder<List<Nutrition>>(
-                      stream: _firestoreService
-                          .getNutritionsByIds(calendarDay.nutritionIds),
-                      builder: (context, nutritionSnapshot) {
-                        if (nutritionSnapshot.hasData) {
-                          return Column(
-                            children: nutritionSnapshot.data!
-                                .map((nutrition) => Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 16.0),
-                                      child: _buildNutritionCard(nutrition),
-                                    ))
-                                .toList(),
-                          );
-                        }
-                        return const Center(child: CircularProgressIndicator());
-                      },
-                    ),
-                  ]
-                ],
-              );
-            },
+                    return const Center(child: CircularProgressIndicator());
+                  },
+                )
+              else
+                _buildNoPlanCard(
+                    title: "Rest Day", message: "Enjoy your day off!"),
+              if (calendarDay.hasNutrition) ...[
+                const SizedBox(height: 16),
+                _buildNutritionCard(calendarDay),
+              ]
+            ],
           );
         },
       ),
     );
   }
 
-  // UPDATED: This method now fetches real-time progress stats
   Widget _buildWeeklyProgress() {
     return FutureBuilder<Map<String, int>>(
       future: _firestoreService.getUserProgressStats(),
       builder: (context, statsSnapshot) {
         if (statsSnapshot.connectionState == ConnectionState.waiting) {
-          // Show a placeholder with shimmer or just a simple card while loading
           return _buildWeeklyProgressCard(0, 0, 0, 0);
         }
 
@@ -189,26 +195,27 @@ class _PlanScreenState extends State<PlanScreen> {
         }
 
         if (!statsSnapshot.hasData) {
-          return _buildWeeklyProgressCard(
-              0, 0, 0, 0); // Should not happen if future completes
+          return _buildWeeklyProgressCard(0, 0, 0, 0);
         }
 
         final stats = statsSnapshot.data!;
+
         final completedWorkouts = stats['completedWorkouts'] ?? 0;
+
         final completedMeals = stats['mealsCompleted'] ?? 0;
 
-        // Now, we still need the total number of workouts for the week.
-        // We can get this from the user's stream.
         return StreamBuilder<UserModel>(
           stream: _firestoreService.getUser(),
           builder: (context, userSnapshot) {
             if (!userSnapshot.hasData) {
-              // User data is still loading, show stats with default totals
               return _buildWeeklyProgressCard(
                   completedWorkouts, 7, completedMeals, 21);
             }
+
             final user = userSnapshot.data!;
+
             final totalWorkouts = user.daysPerWeek;
+
             final totalMeals = totalWorkouts * 3;
 
             return _buildWeeklyProgressCard(
@@ -219,7 +226,6 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
-  // UPDATED: This widget now builds a library of all workouts from all plans
   Widget _buildWorkoutLibraryList() {
     return StreamBuilder<List<Plan>>(
       stream: _plansStream,
@@ -227,6 +233,7 @@ class _PlanScreenState extends State<PlanScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+
         if (snapshot.hasError) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -234,6 +241,7 @@ class _PlanScreenState extends State<PlanScreen> {
                 _buildStyledContainer(child: Text('Error: ${snapshot.error}')),
           );
         }
+
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -242,6 +250,7 @@ class _PlanScreenState extends State<PlanScreen> {
         }
 
         final plans = snapshot.data!;
+
         return Column(
           children: plans.map((plan) {
             return StreamBuilder<List<Workout>>(
@@ -251,10 +260,13 @@ class _PlanScreenState extends State<PlanScreen> {
                     ConnectionState.waiting) {
                   return const SizedBox.shrink();
                 }
+
                 if (!workoutSnapshot.hasData || workoutSnapshot.data!.isEmpty) {
                   return const SizedBox.shrink();
                 }
+
                 final workouts = workoutSnapshot.data!;
+
                 return Column(
                   children: workouts.map((workout) {
                     return Padding(
@@ -297,18 +309,14 @@ class _PlanScreenState extends State<PlanScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('My Plan',
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkText)),
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
               Text(DateFormat('EEEE, MMMM d').format(DateTime.now()),
-                  style: const TextStyle(
-                      fontSize: 16, color: AppColors.subtitleGray)),
+                  style: const TextStyle(fontSize: 16, color: Colors.black54)),
             ],
           ),
           IconButton(
-            icon: const Icon(Icons.calendar_today_outlined,
-                size: 28, color: AppColors.darkText),
+            icon: const Icon(Icons.calendar_today_outlined, size: 28),
             onPressed: () {
               Navigator.push(
                 context,
@@ -332,8 +340,8 @@ class _PlanScreenState extends State<PlanScreen> {
           GestureDetector(
             onTap: onTap,
             child: Text(actionText,
-                style: const TextStyle(
-                    color: AppColors.primaryGreen,
+                style: TextStyle(
+                    color: Colors.green[600],
                     fontWeight: FontWeight.w600,
                     fontSize: 16)),
           ),
@@ -341,25 +349,32 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
-  Widget _buildStyledContainer({required Widget child}) {
+  Widget _buildStyledContainer(
+      {required Widget child, bool isCentered = false}) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: AppColors.darkText.withOpacity(0.05),
-              spreadRadius: 2,
-              blurRadius: 10,
-              offset: const Offset(0, 4)),
+            color: Colors.grey.withOpacity(0.08),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: child,
     );
   }
 
-  Widget _buildWorkoutCard(Workout workout) {
+  Widget _buildWorkoutCard(Workout workout, Calendar calendar) {
+    final bool isCompleted = calendar.completed;
+
+    const primaryGreen = Color(0xFF1EB955);
+
     return _buildStyledContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,12 +382,12 @@ class _PlanScreenState extends State<PlanScreen> {
           Row(
             children: [
               Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10)),
+                      color: primaryGreen.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12)),
                   child: const Icon(Icons.fitness_center,
-                      color: AppColors.primaryGreen)),
+                      color: primaryGreen, size: 24)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -383,9 +398,16 @@ class _PlanScreenState extends State<PlanScreen> {
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 4),
                     if (workout.duration != null)
-                      Text('🕒 ${workout.duration}',
-                          style:
-                              const TextStyle(color: AppColors.subtitleGray)),
+                      Row(
+                        children: [
+                          const Icon(Icons.timer_outlined,
+                              size: 16, color: Colors.black54),
+                          const SizedBox(width: 4),
+                          Text(workout.duration!,
+                              style: const TextStyle(
+                                  color: Colors.black54, fontSize: 14)),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -404,28 +426,46 @@ class _PlanScreenState extends State<PlanScreen> {
               },
               child: const Text('View Details >',
                   style: TextStyle(
-                      color: AppColors.primaryGreen,
-                      fontWeight: FontWeight.w600))),
+                      color: primaryGreen, fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-              onPressed: () {},
+              onPressed: isCompleted
+                  ? null
+                  : () => _toggleCompletion(calendar.dateId, isCompleted),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor:
+                      isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,
+                  disabledBackgroundColor: const Color(0xFFE0E0E0),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15)),
                   elevation: 0),
-              child: const Text('Workout Completed',
-                  style: TextStyle(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16))),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Workout Completed',
+                      style: TextStyle(
+                          color: isCompleted ? Colors.black54 : Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16)),
+                  if (isCompleted) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.check, color: Colors.black54, size: 20),
+                  ]
+                ],
+              )),
         ],
       ),
     );
   }
 
-  Widget _buildNutritionCard(Nutrition nutrition) {
+  Widget _buildNutritionCard(Calendar calendar) {
+    final bool isCompleted = calendar.completed;
+
+    const primaryBlue = Color(0xFF3A7DFF);
+
+    const primaryGreen = Color(0xFF1EB955);
+
     return _buildStyledContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,23 +473,22 @@ class _PlanScreenState extends State<PlanScreen> {
           Row(
             children: [
               Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                      color: AppColors.secondaryBlue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10)),
-                  child:
-                      const Icon(Icons.apple, color: AppColors.secondaryBlue)),
+                      color: primaryBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.apple, color: primaryBlue, size: 24)),
               const SizedBox(width: 12),
-              Expanded(
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(nutrition.name,
-                        style: const TextStyle(
+                    Text("High Protein Focus",
+                        style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 4),
-                    const Text('Balanced nutrition plan',
-                        style: TextStyle(color: AppColors.subtitleGray)),
+                    SizedBox(height: 4),
+                    Text('Balanced nutrition plan',
+                        style: TextStyle(color: Colors.black54, fontSize: 14)),
                   ],
                 ),
               ),
@@ -458,31 +497,45 @@ class _PlanScreenState extends State<PlanScreen> {
           const SizedBox(height: 16),
           GestureDetector(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => NutritionOverviewScreen(
-                          nutritionId: nutrition.nutritionId)),
-                );
+                if (calendar.nutritionIds.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => NutritionOverviewScreen(
+                            nutritionId: calendar.nutritionIds.first)),
+                  );
+                }
               },
               child: const Text('View Details >',
                   style: TextStyle(
-                      color: AppColors.primaryGreen,
-                      fontWeight: FontWeight.w600))),
+                      color: primaryGreen, fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-              onPressed: () {},
+              onPressed: isCompleted
+                  ? null
+                  : () => _toggleCompletion(calendar.dateId, isCompleted),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor:
+                      isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,
+                  disabledBackgroundColor: const Color(0xFFE0E0E0),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15)),
                   elevation: 0),
-              child: const Text('Nutrition Completed',
-                  style: TextStyle(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16))),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Nutrition Completed',
+                      style: TextStyle(
+                          color: isCompleted ? Colors.black54 : Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16)),
+                  if (isCompleted) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.check, color: Colors.black54, size: 20),
+                  ]
+                ],
+              )),
         ],
       ),
     );
@@ -551,10 +604,15 @@ class _PlanScreenState extends State<PlanScreen> {
 
   String _getWorkoutEmoji(String workoutName) {
     final name = workoutName.toLowerCase();
+
     if (name.contains('strength')) return '💪';
+
     if (name.contains('cardio')) return '🏃';
+
     if (name.contains('recovery')) return '🧘';
+
     if (name.contains('rest')) return '😌';
+
     return '🏋️';
   }
 
@@ -623,22 +681,29 @@ class _PlanScreenState extends State<PlanScreen> {
     );
   }
 
+  // UPDATED: This widget now reflects the new UI from the screenshot
+
   Widget _buildNoPlanCard(
       {String title = "No plan for today",
       String message = "Enjoy your day off!"}) {
     return _buildStyledContainer(
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          const SizedBox(height: 16),
           Text(title,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.black87)),
           const SizedBox(height: 8),
           Text(message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.subtitleGray)),
+              style: const TextStyle(color: Colors.black54, fontSize: 16)),
           const SizedBox(height: 16),
-          const Icon(Icons.celebration_outlined,
-              size: 40, color: AppColors.grey),
+          const Icon(Icons.celebration_outlined, size: 40, color: Colors.grey),
+          const SizedBox(height: 16),
         ],
       ),
     );

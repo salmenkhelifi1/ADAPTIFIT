@@ -1,5 +1,6 @@
 import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -17,7 +18,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<DateTime, Calendar> _calendarData = {};
+  Map<String, Calendar> _calendarData = {};
 
   @override
   void initState() {
@@ -28,9 +29,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.screenBackground,
+      backgroundColor: AppColors.screenBackground, // Updated background color
       appBar: AppBar(
-        backgroundColor: AppColors.screenBackground,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.darkText),
@@ -54,10 +54,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
           if (snapshot.hasData) {
             _calendarData = {
-              for (var entry in snapshot.data!)
-                // FIX: Changed entry.date to entry.dateId
-                DateFormat('yyyy-MM-dd').parse(entry.dateId): entry
+              for (var entry in snapshot.data!) entry.dateId: entry
             };
+            // --- ADDED FOR DEBUGGING ---
+            if (kDebugMode) {
+              print(
+                  "[Calendar Debug] Loaded Data Keys: ${_calendarData.keys.toList()}");
+            }
+            // --- END DEBUGGING ---
           }
           return Padding(
             padding: const EdgeInsets.all(20.0),
@@ -102,19 +106,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     },
                     calendarStyle: CalendarStyle(
                       todayDecoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withOpacity(0.3),
+                        color: const Color(0xFFE8F5E9), // Solid light green
                         shape: BoxShape.circle,
                       ),
+                      todayTextStyle:
+                          const TextStyle(color: AppColors.darkText),
                       selectedDecoration: const BoxDecoration(
                         color: AppColors.primaryGreen,
                         shape: BoxShape.circle,
                       ),
                       defaultTextStyle:
-                          const TextStyle(fontWeight: FontWeight.bold),
+                          const TextStyle(fontWeight: FontWeight.normal),
                       weekendTextStyle:
-                          const TextStyle(fontWeight: FontWeight.bold),
+                          const TextStyle(fontWeight: FontWeight.normal),
                       selectedTextStyle: const TextStyle(
                           color: Colors.white, fontWeight: FontWeight.bold),
+                      outsideDaysVisible: false,
                     ),
                     headerStyle: const HeaderStyle(
                       titleCentered: true,
@@ -123,19 +130,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     calendarBuilders: CalendarBuilders(
-                      markerBuilder: (context, day, events) {
-                        final calendarDay = _calendarData[day];
+                      markerBuilder: (context, date, events) {
+                        final dateString =
+                            DateFormat('yyyy-MM-dd').format(date);
+                        final calendarDay = _calendarData[dateString];
+
+                        // --- ADDED FOR DEBUGGING ---
+                        if (calendarDay != null && kDebugMode) {
+                          print(
+                              "[Calendar Debug] Found Match for: $dateString");
+                        }
+                        // --- END DEBUGGING ---
+
                         if (calendarDay != null &&
                             (calendarDay.hasWorkout ||
                                 calendarDay.hasNutrition)) {
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (calendarDay.hasWorkout)
-                                _buildEventDot(AppColors.primaryGreen),
-                              if (calendarDay.hasNutrition)
-                                _buildEventDot(AppColors.secondaryBlue),
-                            ],
+                          return Positioned(
+                            bottom: 4,
+                            right: 0,
+                            left: 0,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (calendarDay.hasWorkout)
+                                  _buildEventDot(AppColors.primaryGreen),
+                                if (calendarDay.hasNutrition)
+                                  _buildEventDot(AppColors.secondaryBlue),
+                              ],
+                            ),
                           );
                         }
                         return null;
@@ -153,9 +175,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildEventDot(Color color) {
     return Container(
-      width: 5,
-      height: 5,
-      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+      width: 4,
+      height: 4,
+      margin: const EdgeInsets.symmetric(vertical: 1.5),
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
