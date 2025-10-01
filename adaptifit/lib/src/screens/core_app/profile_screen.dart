@@ -2,13 +2,15 @@ import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 import 'package:adaptifit/src/core/models/models.dart';
 import 'package:adaptifit/src/screens/auth/change_password_screen.dart';
 import 'package:adaptifit/src/screens/auth/welcome_screen.dart';
 import 'package:adaptifit/src/services/firestore_service.dart';
 import 'package:adaptifit/src/services/n8n_service.dart';
-import 'package:adaptifit/src/screens/core_app/rewrite_plan_screen.dart';
+import 'package:adaptifit/src/screens/onboarding/onboarding_question_screen.dart';
+import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/core_app/injury_adaptation_notes_screen.dart';
 import 'package:adaptifit/src/screens/core_app/badges_streaks_screen.dart';
 
@@ -106,13 +108,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   text: 'Rewrite Plan',
                   isPrimary: true,
                   onPressed: () {
+                    final onboardingProvider = Provider.of<OnboardingProvider>(context, listen: false);
+                    onboardingProvider.setAnswers(user.onboardingAnswers);
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => RewritePlanScreen(
-                                userId: user.id,
-                                onboardingAnswers: user.onboardingAnswers,
-                                n8nService: _n8nService)));
+                            builder: (context) => const OnboardingQuestionScreen()));
                   },
                 ),
                 const SizedBox(height: 16),

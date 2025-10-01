@@ -11,4 +11,10 @@ class OnboardingProvider with ChangeNotifier {
     _answers[key] = value;
     notifyListeners();
   }
+
+  void setAnswers(Map<String, dynamic> newAnswers) {
+    _answers.clear();
+    _answers.addAll(newAnswers);
+    notifyListeners();
+  }
 }

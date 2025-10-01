@@ -1,5 +1,7 @@
 // lib/src/core/models/workout.dart
 
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart'; // Import for debugPrint
 
@@ -94,35 +96,31 @@ class Workout {
     debugPrint("--- Parsing Workout Data for doc ${doc.id} ---");
     debugPrint(data.toString());
 
-    if (!data.containsKey('workout')) {
-      debugPrint(
-          "--- ERROR: 'workout' key not found in document ${doc.id} ---");
-      return Workout(
-        workoutId: doc.id,
-        userId: data['userId'] ?? '',
-        planId: data['planId'],
-        name: 'Invalid Workout Data',
-        exercises: [],
-      );
-    }
+    Map<String, dynamic> workoutData = data.containsKey('workout') ? data['workout'] as Map<String, dynamic> : data;
 
-    Map<String, dynamic> workoutData = data['workout'] as Map<String, dynamic>;
 
-    // *** FIX: Safely parse the exercises list ***
     List<Exercise> exercisesList = [];
-    if (workoutData['exercises'] != null && workoutData['exercises'] is List) {
-      exercisesList = (workoutData['exercises'] as List<dynamic>)
-          .map((e) => Exercise.fromMap(e as Map<String, dynamic>))
-          .toList();
-    } else if (workoutData['exercise'] != null &&
-        workoutData['exercise'] is String) {
-      // Handle the "Active Recovery" case where there is a single exercise string
-      exercisesList.add(Exercise(
-        name: workoutData['exercise'],
-        sets: 1,
-        reps: 'N/A',
-      ));
+    if (workoutData.containsKey('blocksJson') && workoutData['blocksJson'] is String) {
+      final List<dynamic> blocks = jsonDecode(workoutData['blocksJson']);
+      for (var block in blocks) {
+        if (block['items'] is List) {
+          for (var item in block['items']) {
+            exercisesList.add(Exercise.fromMap({
+              'name': item['name'],
+              'sets': item['sets'],
+              'reps': item['reps_or_duration'],
+              'rest': item['rest'],
+              'instructions': item['coaching_cue'],
+            }));
+          }
+        }
+      }
+    } else if (workoutData.containsKey('exercises') && workoutData['exercises'] is List) {
+        exercisesList = (workoutData['exercises'] as List)
+            .map((e) => Exercise.fromMap(e as Map<String, dynamic>))
+            .toList();
     }
+
 
     return Workout(
       workoutId: doc.id,
@@ -130,8 +128,8 @@ class Workout {
       planId: data['planId'],
       name: workoutData['name'] ?? 'Untitled Workout',
       day: workoutData['day'],
-      exercises: exercisesList, // Use the safely parsed list
-      notes: workoutData['notes'],
+      exercises: exercisesList,
+      notes: workoutData['notes'] ?? workoutData['description'],
       targetMuscles: workoutData['targetMuscles'] != null
           ? List<String>.from(workoutData['targetMuscles'])
           : null,
@@ -144,15 +142,13 @@ class Workout {
     return {
       'userId': userId,
       'planId': planId,
-      'workout': {
-        'name': name,
-        'day': day,
-        'exercises': exercises.map((e) => e.toMap()).toList(),
-        'notes': notes,
-        'targetMuscles': targetMuscles,
-        'week': week,
-        'duration': duration,
-      }
+      'name': name,
+      'day': day,
+      'exercises': exercises.map((e) => e.toMap()).toList(),
+      'notes': notes,
+      'targetMuscles': targetMuscles,
+      'week': week,
+      'duration': duration,
     };
   }
 }

@@ -156,8 +156,7 @@ class _PlanScreenState extends State<PlanScreen> {
                   calendarDay.planId != null &&
                   calendarDay.workoutId != null)
                 StreamBuilder<Workout>(
-                  stream: _firestoreService.getWorkout(
-                      calendarDay.planId!, calendarDay.workoutId!),
+                  stream: _firestoreService.getWorkout(calendarDay.workoutId!),
                   builder: (context, workoutSnapshot) {
                     if (workoutSnapshot.hasData) {
                       return _buildWorkoutCard(
@@ -227,8 +226,8 @@ class _PlanScreenState extends State<PlanScreen> {
   }
 
   Widget _buildWorkoutLibraryList() {
-    return StreamBuilder<List<Plan>>(
-      stream: _plansStream,
+    return StreamBuilder<List<Workout>>(
+      stream: _firestoreService.getWorkouts(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -245,53 +244,31 @@ class _PlanScreenState extends State<PlanScreen> {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: _buildStyledContainer(child: const Text('No plans found.')),
+            child: _buildStyledContainer(child: const Text('No workouts found in your library.')),
           );
         }
 
-        final plans = snapshot.data!;
+        final workouts = snapshot.data!;
 
         return Column(
-          children: plans.map((plan) {
-            return StreamBuilder<List<Workout>>(
-              stream: _firestoreService.getWorkouts(plan.planId),
-              builder: (context, workoutSnapshot) {
-                if (workoutSnapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const SizedBox.shrink();
-                }
-
-                if (!workoutSnapshot.hasData || workoutSnapshot.data!.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                final workouts = workoutSnapshot.data!;
-
-                return Column(
-                  children: workouts.map((workout) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                      child: _buildUpcomingPlanCard(
-                        dayOfWeek: plan.planName,
-                        date: workout.targetMuscles?.join(', ') ??
-                            'General Workout',
-                        workoutName: workout.name,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => WorkoutOverviewScreen(
-                                planId: plan.planId,
-                                workoutId: workout.workoutId,
-                              ),
-                            ),
-                          );
-                        },
+          children: workouts.map((workout) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: _buildUpcomingPlanCard(
+                dayOfWeek: workout.name, // Using workout name as title
+                date: workout.targetMuscles?.join(', ') ?? 'General Workout',
+                workoutName: workout.name,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WorkoutOverviewScreen(
+                        workoutId: workout.workoutId,
                       ),
-                    );
-                  }).toList(),
-                );
-              },
+                    ),
+                  );
+                },
+              ),
             );
           }).toList(),
         );
@@ -420,7 +397,6 @@ class _PlanScreenState extends State<PlanScreen> {
                   context,
                   MaterialPageRoute(
                       builder: (context) => WorkoutOverviewScreen(
-                          planId: workout.planId!,
                           workoutId: workout.workoutId)),
                 );
               },

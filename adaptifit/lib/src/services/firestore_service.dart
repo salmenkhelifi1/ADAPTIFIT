@@ -75,11 +75,9 @@ class FirestoreService {
 
   //-- Workouts --//
 
-  // Get all workouts for a specific plan
-  Stream<List<Workout>> getWorkouts(String planId) {
+  // Get all workouts for a user
+  Stream<List<Workout>> getWorkouts() {
     return userDoc
-        .collection('plans')
-        .doc(planId)
         .collection('workouts')
         .snapshots()
         .map((snapshot) {
@@ -88,10 +86,8 @@ class FirestoreService {
   }
 
   // Get a single workout
-  Stream<Workout> getWorkout(String planId, String workoutId) {
+  Stream<Workout> getWorkout(String workoutId) {
     return userDoc
-        .collection('plans')
-        .doc(planId)
         .collection('workouts')
         .doc(workoutId)
         .snapshots()

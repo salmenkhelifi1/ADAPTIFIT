@@ -20,7 +20,7 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _workoutsStream = _firestoreService.getWorkouts(widget.plan.planId);
+    _workoutsStream = _firestoreService.getWorkouts();
   }
 
   @override
@@ -44,7 +44,13 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
                 child: Text('No workouts found for this plan.'));
           }
 
-          final workouts = snapshot.data!;
+          final workouts = snapshot.data!.where((workout) => workout.planId == widget.plan.planId).toList();
+
+          if (workouts.isEmpty) {
+            return const Center(
+                child: Text('No workouts found for this plan.'));
+          }
+
           return ListView.builder(
             itemCount: workouts.length,
             itemBuilder: (context, index) {

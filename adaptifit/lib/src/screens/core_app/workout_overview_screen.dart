@@ -4,12 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:adaptifit/src/constants/app_colors.dart'; // Assuming you have this
 
 class WorkoutOverviewScreen extends StatefulWidget {
-  final String planId;
   final String workoutId;
 
   const WorkoutOverviewScreen({
     Key? key,
-    required this.planId,
     required this.workoutId,
   }) : super(key: key);
 
@@ -26,7 +24,7 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
       backgroundColor: AppColors.screenBackground,
       body: SafeArea(
         child: StreamBuilder<Workout>(
-          stream: _firestoreService.getWorkout(widget.planId, widget.workoutId),
+          stream: _firestoreService.getWorkout(widget.workoutId),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
