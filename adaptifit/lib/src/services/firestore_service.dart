@@ -86,12 +86,20 @@ class FirestoreService {
   }
 
   // Get a single workout
-  Stream<Workout> getWorkout(String workoutId) {
+  Stream<Workout?> getWorkout(String workoutId) {
+    debugPrint("Getting workout with id: $workoutId");
     return userDoc
         .collection('workouts')
         .doc(workoutId)
         .snapshots()
-        .map((doc) => Workout.fromFirestore(doc));
+        .map((doc) {
+      if (doc.exists) {
+        debugPrint("Workout found with id: $workoutId");
+        return Workout.fromFirestore(doc);
+      }
+      debugPrint("Workout not found with id: $workoutId");
+      return null;
+    });
   }
 
   //-- Calendar --//

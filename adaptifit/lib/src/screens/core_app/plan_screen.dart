@@ -154,16 +154,23 @@ class _PlanScreenState extends State<PlanScreen> {
             children: [
               if (calendarDay.hasWorkout &&
                   calendarDay.planId != null &&
-                  calendarDay.workoutId != null)
-                StreamBuilder<Workout>(
+                  calendarDay.workoutId != null &&
+                  calendarDay.workoutId!.isNotEmpty)
+                StreamBuilder<Workout?>(
                   stream: _firestoreService.getWorkout(calendarDay.workoutId!),
                   builder: (context, workoutSnapshot) {
-                    if (workoutSnapshot.hasData) {
+                    if (workoutSnapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (workoutSnapshot.hasError) {
+                      return Text('Error: ${workoutSnapshot.error}');
+                    }
+                    if (workoutSnapshot.hasData && workoutSnapshot.data != null) {
                       return _buildWorkoutCard(
                           workoutSnapshot.data!, calendarDay);
                     }
 
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: Text("Workout not found"));
                   },
                 )
               else
@@ -259,6 +266,7 @@ class _PlanScreenState extends State<PlanScreen> {
                 date: workout.targetMuscles?.join(', ') ?? 'General Workout',
                 workoutName: workout.name,
                 onTap: () {
+                  debugPrint("Tapped on workout: ${workout.toFirestore()}");
                   Navigator.push(
                     context,
                     MaterialPageRoute(

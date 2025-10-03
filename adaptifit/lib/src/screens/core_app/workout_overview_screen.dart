@@ -19,11 +19,17 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
   final FirestoreService _firestoreService = FirestoreService();
 
   @override
+  void initState() {
+    super.initState();
+    debugPrint("WorkoutOverviewScreen initState, workoutId: ${widget.workoutId}");
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.screenBackground,
       body: SafeArea(
-        child: StreamBuilder<Workout>(
+        child: StreamBuilder<Workout?>(
           stream: _firestoreService.getWorkout(widget.workoutId),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {

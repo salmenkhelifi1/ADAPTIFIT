@@ -77,12 +77,15 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                 _buildPreviewBanner(),
                 const SizedBox(height: 20),
                 if (calendarDay.hasWorkout &&
-                    calendarDay.workoutId != null)                  StreamBuilder<Workout>(
+                    calendarDay.workoutId != null && calendarDay.workoutId!.isNotEmpty)                  StreamBuilder<Workout?>(
                     stream: _firestoreService.getWorkout(calendarDay.workoutId!),
                     builder: (context, workoutSnapshot) {
                       if (workoutSnapshot.connectionState ==
                           ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
+                      }
+                      if (workoutSnapshot.hasError) {
+                        return Text("Error: ${workoutSnapshot.error}");
                       }
                       if (!workoutSnapshot.hasData || workoutSnapshot.data == null) {
                         return const Text("Workout not found");
