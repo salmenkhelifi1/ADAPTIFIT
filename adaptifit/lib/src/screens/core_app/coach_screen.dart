@@ -1,11 +1,12 @@
+import 'package:adaptifit/src/models/chat_message.dart';
+import 'package:adaptifit/src/screens/core_app/plan_screen.dart';
+import 'package:adaptifit/src/services/chat_api_service.dart';
+import 'package:adaptifit/src/services/chat_cache_service.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 
 import 'package:adaptifit/src/constants/app_colors.dart';
-import 'package:adaptifit/src/core/models/models.dart';
-import 'package:adaptifit/src/services/n8n_service.dart';
-import 'package:adaptifit/src/services/firestore_service.dart'; // Import FirestoreService
 
 class CoachScreen extends StatefulWidget {
   const CoachScreen({super.key});
@@ -16,71 +17,103 @@ class CoachScreen extends StatefulWidget {
 
 class _CoachScreenState extends State<CoachScreen> {
   final TextEditingController _textController = TextEditingController();
-  final N8nService _n8nService = N8nService();
-  final FirestoreService _firestoreService = FirestoreService(); // Initialize FirestoreService
-  List<ChatMessage> _messages = []; // Change to non-final
-  bool _isLoading = false;
+  final ScrollController _scrollController = ScrollController();
+  final ChatCacheService _chatCache = ChatCacheService();
+  late final ChatApiService _chatApiService;
+
+  // Represents loading a new message from the AI, not the initial history
+  bool _isAiTyping = false;
   String? _userName;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName(); // Load user name without welcome message
-    _firestoreService.getChatMessages().listen((messages) {
-      setState(() {
-        _messages = messages;
-      });
+    _initializeChat();
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.minScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
-  void _loadUserName() {
-    // In a real app, you'd fetch the user's name from Firestore
-    // For now, we'll use a placeholder.
-    _userName = "Alex";
+  Future<void> _initializeChat() async {
+    const secureStorage = FlutterSecureStorage();
+    final token = await secureStorage.read(key: 'jwt_token');
+    if (token != null) {
+      _chatApiService = ChatApiService(token);
+      // Only load history if it hasn't been fetched before.
+      if (!_chatCache.hasMessages) {
+        await _loadHistory();
+      }
+    } else {
+      // Handle not logged in
+    }
   }
 
-  Future<void> _sendMessage() async {
+  Future<void> _loadHistory() async {
+    setState(() {
+      _isAiTyping = true; // Show loading indicator while fetching history
+    });
+    try {
+      await _chatCache.loadHistory(_chatApiService);
+    } catch (e) {
+      // Handle error
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAiTyping = false;
+        });
+        _scrollToBottom();
+      }
+    }
+  }
+
+  Future<void> _handleSendPressed() async {
     final text = _textController.text;
     if (text.trim().isEmpty) return;
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return; // Should not happen if user is logged in
-
     final userMessage = ChatMessage(
-      senderId: user.uid,
+      id: DateTime.now().toString(), // Temporary ID
       text: text,
+      sender: 'user',
       timestamp: DateTime.now(),
-      messageType: 'user',
     );
 
-    // Add message to Firestore
-    await _firestoreService.addChatMessage(userMessage);
-
     setState(() {
-      _isLoading = true;
+      _chatCache.addUserMessage(userMessage);
+      _isAiTyping = true;
     });
+    _scrollToBottom();
 
     _textController.clear();
 
-    final response = await _n8nService.askAiCoach(
-      userId: user.uid,
-      prompt: text,
-    );
-
-    if (response != null) {
-      final coachMessage = ChatMessage(
-        senderId: 'ai_coach', // A special ID for the AI coach
-        text: response,
-        timestamp: DateTime.now(),
-        messageType: 'ai',
-      );
-      // Add AI message to Firestore
-      await _firestoreService.addChatMessage(coachMessage);
+    try {
+      final aiMessage = await _chatApiService.sendMessage(text);
+      _chatCache.addAiMessage(aiMessage);
+    } catch (e) {
+      // Handle error
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAiTyping = false;
+        });
+        _scrollToBottom();
+      }
     }
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override
@@ -90,11 +123,13 @@ class _CoachScreenState extends State<CoachScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.white,
+        automaticallyImplyLeading: false,
         title: const Row(
           children: [
             CircleAvatar(
               backgroundColor: AppColors.primaryGreen,
-              child: Icon(Icons.auto_awesome, color: AppColors.white, size: 20),
+              child:
+                  Icon(Icons.auto_awesome, color: AppColors.white, size: 20),
             ),
             SizedBox(width: 12),
             Column(
@@ -110,7 +145,8 @@ class _CoachScreenState extends State<CoachScreen> {
                 ),
                 Text(
                   'Your AI fitness coach',
-                  style: TextStyle(color: AppColors.timestampGray, fontSize: 14),
+                  style: TextStyle(
+                      color: AppColors.timestampGray, fontSize: 14),
                 ),
               ],
             ),
@@ -119,7 +155,7 @@ class _CoachScreenState extends State<CoachScreen> {
       ),
       body: Column(
         children: [
-          if (_messages.isEmpty) // Conditional WelcomeBubble
+          if (_chatCache.messages.isEmpty && !_isAiTyping)
             WelcomeBubble(
               title: 'Hi ${_userName ?? 'there'}! 👋',
               text:
@@ -127,19 +163,24 @@ class _CoachScreenState extends State<CoachScreen> {
             ),
           Expanded(
             child: ListView.builder(
-              reverse: true, // To show newest messages at the bottom
+              controller: _scrollController,
+              reverse: true,
               padding: const EdgeInsets.all(16.0),
-              itemCount: _messages.length + (_isLoading ? 1 : 0), // Add 1 for typing indicator
+              itemCount: _chatCache.messages.length + (_isAiTyping ? 1 : 0),
               itemBuilder: (context, index) {
-                if (_isLoading && index == 0) {
+                if (_isAiTyping && index == 0) {
                   return const TypingIndicator();
                 }
-                // When loading, subtract 1 from the index to account for the typing indicator.
-                final message = _messages[index - (_isLoading ? 1 : 0)];
+                final messageIndex = _isAiTyping ? index - 1 : index;
+                if (messageIndex < 0 ||
+                    messageIndex >= _chatCache.messages.length) {
+                  return const SizedBox.shrink();
+                }
+                final message = _chatCache.messages[messageIndex];
                 return ChatBubble(
                   text: message.text,
                   time: DateFormat('h:mm a').format(message.timestamp),
-                  isUser: message.messageType == 'user',
+                  isUser: message.sender == 'user',
                 );
               },
             ),
@@ -160,7 +201,7 @@ class _CoachScreenState extends State<CoachScreen> {
             Expanded(
               child: TextField(
                 controller: _textController,
-                onSubmitted: (_) => _sendMessage(),
+                onSubmitted: (_) => _handleSendPressed(),
                 decoration: InputDecoration(
                   hintText: 'Ask your coach anything...',
                   filled: true,
@@ -184,7 +225,7 @@ class _CoachScreenState extends State<CoachScreen> {
               ),
               child: IconButton(
                 icon: const Icon(Icons.send, color: AppColors.white),
-                onPressed: _sendMessage,
+                onPressed: _handleSendPressed,
               ),
             ),
           ],
@@ -193,8 +234,6 @@ class _CoachScreenState extends State<CoachScreen> {
     );
   }
 }
-
-// UI Components from original file, slightly adapted
 
 class WelcomeBubble extends StatelessWidget {
   final String title;
@@ -326,7 +365,7 @@ class TypingIndicator extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
           ),
           child: const Text(
-            'Coach is typing...',
+            'Coach is typing...', // Corrected escaping for single quote
             style: TextStyle(color: AppColors.timestampGray, fontStyle: FontStyle.italic),
           ),
         ),

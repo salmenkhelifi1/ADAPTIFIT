@@ -1,26 +1,26 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
-import 'package:adaptifit/src/core/models/models.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/models/workout.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:adaptifit/src/core/models/plan.dart';
+import 'package:adaptifit/src/models/plan.dart';
 
 class PlanDetailsScreen extends StatefulWidget {
   final Plan plan;
 
-  const PlanDetailsScreen({Key? key, required this.plan}) : super(key: key);
+  const PlanDetailsScreen({super.key, required this.plan});
 
   @override
   State<PlanDetailsScreen> createState() => _PlanDetailsScreenState();
 }
 
 class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  Stream<List<Workout>>? _workoutsStream;
+  final ApiService _apiService = ApiService();
+  late Future<List<Workout>> _workoutsFuture;
 
   @override
   void initState() {
     super.initState();
-    _workoutsStream = _firestoreService.getWorkouts();
+    _workoutsFuture = _apiService.getWorkoutsForPlan(widget.plan.id);
   }
 
   @override
@@ -30,8 +30,8 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
         title: Text(widget.plan.planName),
         backgroundColor: AppColors.primaryGreen,
       ),
-      body: StreamBuilder<List<Workout>>(
-        stream: _workoutsStream,
+      body: FutureBuilder<List<Workout>>(
+        future: _workoutsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -44,12 +44,7 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
                 child: Text('No workouts found for this plan.'));
           }
 
-          final workouts = snapshot.data!.where((workout) => workout.planId == widget.plan.planId).toList();
-
-          if (workouts.isEmpty) {
-            return const Center(
-                child: Text('No workouts found for this plan.'));
-          }
+          final workouts = snapshot.data!;
 
           return ListView.builder(
             itemCount: workouts.length,
@@ -75,8 +70,8 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
                       ...workout.exercises.map((exercise) {
                         return ListTile(
                           title: Text(exercise.name,
-                              style:
-                                  const TextStyle(color: AppColors.darkText)),
+                              style: const TextStyle(
+                                  color: AppColors.darkText)),
                           subtitle: Text(
                               'Sets: ${exercise.sets}, Reps: ${exercise.reps}',
                               style: const TextStyle(

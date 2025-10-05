@@ -1,4 +1,6 @@
+import 'package:adaptifit/src/services/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/constants/app_strings.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
@@ -14,35 +16,35 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToHome();
+    _initializeAndNavigate();
   }
 
-  // Navigate to the main app after a delay.
-  _navigateToHome() async {
-    await Future.delayed(const Duration(milliseconds: 2000), () {});
+  Future<void> _initializeAndNavigate() async {
+    // Wait for the splash screen duration.
+    await Future.delayed(const Duration(milliseconds: 2000));
+
+    // Navigate to the AuthGate.
     if (mounted) {
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => const AuthGate()));
+        context,
+        MaterialPageRoute(builder: (context) => const AuthGate()),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use the primary green color for a consistent brand feel.
       backgroundColor: AppColors.primaryGreen,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            // Logo Image
-            // IMPORTANT: Make sure you have an image at 'assets/images/adaptifit_white.jpeg'
             Image.asset(
               'assets/images/adaptifit_white.jpeg',
               height: 120,
             ),
             const SizedBox(height: 24),
-            // App Name Text
             const Text(
               AppStrings.appName,
               textAlign: TextAlign.center,
@@ -54,7 +56,6 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            // Tagline Text
             const Text(
               'Smarter fitness. Better you.',
               textAlign: TextAlign.center,

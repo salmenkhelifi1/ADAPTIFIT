@@ -1,9 +1,6 @@
-// lib/src/screens/auth/create_account_screen.dart
-
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'sign_in_screen.dart';
 
@@ -19,9 +16,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final _passwordController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
-  // THIS FUNCTION IS NOW FULLY CORRECTED
   Future<void> _createAccount() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -32,64 +29,38 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     });
 
     try {
-      // Step 1: Create the user in Firebase Authentication
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await _apiService.register(
+        _firstNameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
 
-      // Step 2: Create the user's document in Firestore
-      if (userCredential.user != null) {
-        await FirestoreService().createUserDocument(
-          uid: userCredential.user!.uid,
-          email: _emailController.text.trim(),
-          firstName: _firstNameController.text.trim(),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Success! Welcome to Adaptifit.'),
+            backgroundColor: AppColors.primaryGreen,
+          ),
         );
-
-        // Step 3: Update the user's display name in Firebase Auth
-        await userCredential.user!
-            .updateDisplayName(_firstNameController.text.trim());
-
-        // Step 4: Show a success message to the user for feedback
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Success! Welcome to Adaptifit.'),
-              backgroundColor: AppColors.primaryGreen,
-            ),
-          );
-          // A short delay so the user has time to read the message
-          await Future.delayed(const Duration(seconds: 1));
-        }
-
-        // Step 5: Navigate away. This clears the screen stack and allows
-        // AuthGate to take over and show the correct screen (Onboarding).
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const AuthGate()),
-            (route) => false,
-          );
-        }
+        await Future.delayed(const Duration(seconds: 1));
       }
-    } on FirebaseAuthException catch (e) {
-      String message;
-      if (e.code == 'weak-password') {
-        message = 'The password provided is too weak.';
-      } else if (e.code == 'email-already-in-use') {
-        message = 'An account already exists for that email.';
-      } else {
-        message = 'An error occurred. Please try again.';
+
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthGate()),
+          (route) => false,
+        );
       }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(message),
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
             backgroundColor: AppColors.redAccent,
           ),
         );
       }
-      // On error, stop loading so the user can try again.
+    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;

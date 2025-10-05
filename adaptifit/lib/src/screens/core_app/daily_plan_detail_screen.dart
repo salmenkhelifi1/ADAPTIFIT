@@ -1,7 +1,8 @@
-// lib/src/screens/core_app/daily_plan_detail_screen.dart
 
-import 'package:adaptifit/src/core/models/models.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/models/calendar_entry.dart';
+import 'package:adaptifit/src/models/nutrition.dart';
+import 'package:adaptifit/src/models/workout.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
@@ -16,14 +17,13 @@ class DailyPlanDetailScreen extends StatefulWidget {
 }
 
 class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  late Stream<Calendar> _calendarDayStream;
+  final ApiService _apiService = ApiService();
+  late Future<CalendarEntry?> _calendarDayFuture;
 
   @override
   void initState() {
     super.initState();
-    final dateString = DateFormat('yyyy-MM-dd').format(widget.date);
-    _calendarDayStream = _firestoreService.getCalendarEntry(dateString);
+    _calendarDayFuture = _apiService.getCalendarEntry(widget.date);
   }
 
   @override
@@ -58,11 +58,14 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
         ),
         centerTitle: true,
       ),
-      body: StreamBuilder<Calendar>(
-        stream: _calendarDayStream,
+      body: FutureBuilder<CalendarEntry?>(
+        future: _calendarDayFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
           }
           if (!snapshot.hasData || snapshot.data == null) {
             return _buildNoPlanMessage();
@@ -76,9 +79,9 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
               children: [
                 _buildPreviewBanner(),
                 const SizedBox(height: 20),
-                if (calendarDay.hasWorkout &&
-                    calendarDay.workoutId != null && calendarDay.workoutId!.isNotEmpty)                  StreamBuilder<Workout?>(
-                    stream: _firestoreService.getWorkout(calendarDay.workoutId!),
+                if (calendarDay.workoutId.isNotEmpty)
+                  FutureBuilder<List<Workout>>(
+                    future: _apiService.getWorkoutsForPlan(calendarDay.planId),
                     builder: (context, workoutSnapshot) {
                       if (workoutSnapshot.connectionState ==
                           ConnectionState.waiting) {
@@ -87,34 +90,29 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                       if (workoutSnapshot.hasError) {
                         return Text("Error: ${workoutSnapshot.error}");
                       }
-                      if (!workoutSnapshot.hasData || workoutSnapshot.data == null) {
+                      if (!workoutSnapshot.hasData || workoutSnapshot.data!.isEmpty) {
                         return const Text("Workout not found");
                       }
-                      return _buildWorkoutCard(workoutSnapshot.data!);
+                      final workout = workoutSnapshot.data!.firstWhere((w) => w.id == calendarDay.workoutId);
+                      return _buildWorkoutCard(workout);
                     },
                   ),
-                if (calendarDay.hasNutrition) ...[
+                if (calendarDay.nutritionIds.isNotEmpty) ...[
                   const SizedBox(height: 20),
-                  StreamBuilder<List<Nutrition>>(
-                    stream: _firestoreService
-                        .getNutritionsByIds(calendarDay.nutritionIds),
+                  FutureBuilder<Nutrition>(
+                    future: _apiService.getNutritionForPlan(calendarDay.planId),
                     builder: (context, nutritionSnapshot) {
                       if (nutritionSnapshot.connectionState ==
                           ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
-                      if (!nutritionSnapshot.hasData ||
-                          nutritionSnapshot.data!.isEmpty) {
+                      if (nutritionSnapshot.hasError) {
+                        return Text("Error: ${nutritionSnapshot.error}");
+                      }
+                      if (!nutritionSnapshot.hasData) {
                         return const SizedBox.shrink();
                       }
-                      return Column(
-                        children: nutritionSnapshot.data!
-                            .map((nutrition) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
-                                  child: _buildNutritionCard(nutrition),
-                                ))
-                            .toList(),
-                      );
+                      return _buildNutritionCard(nutritionSnapshot.data!);
                     },
                   ),
                 ]
@@ -175,9 +173,8 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                   Text(workout.name,
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.bold)),
-                  if (workout.duration != null)
-                    Text('🕒 ${workout.duration}',
-                        style: const TextStyle(color: AppColors.subtitleGray)),
+                  Text('🕒 ${workout.duration}',
+                      style: const TextStyle(color: AppColors.subtitleGray)),
                 ],
               ),
             ],
@@ -209,9 +206,8 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
               ],
             ),
           ),
-          if (exercise.rest != null)
-            Text('Rest: ${exercise.rest}',
-                style: const TextStyle(color: AppColors.subtitleGray)),
+          Text('Rest: ${exercise.rest}',
+              style: const TextStyle(color: AppColors.subtitleGray)),
         ],
       ),
     );
@@ -239,7 +235,6 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                // FIX: Use 'name' instead of 'mealType'
                 nutrition.name,
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

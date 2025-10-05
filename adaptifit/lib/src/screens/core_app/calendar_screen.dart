@@ -1,5 +1,5 @@
-import 'package:adaptifit/src/core/models/models.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/models/calendar_entry.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -15,21 +15,23 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final ApiService _apiService = ApiService();
+  late Future<List<CalendarEntry>> _calendarEntriesFuture;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<String, Calendar> _calendarData = {};
+  Map<String, CalendarEntry> _calendarData = {};
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    _calendarEntriesFuture = _apiService.getCalendarEntries();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.screenBackground, // Updated background color
+      backgroundColor: AppColors.screenBackground,
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
@@ -45,23 +47,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         centerTitle: true,
       ),
-      body: StreamBuilder<List<Calendar>>(
-        stream: _firestoreService.getCalendarEntries(),
+      body: FutureBuilder<List<CalendarEntry>>(
+        future: _calendarEntriesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+
           if (snapshot.hasData) {
             _calendarData = {
-              for (var entry in snapshot.data!) entry.dateId: entry
+              for (var entry in snapshot.data!)
+                DateFormat('yyyy-MM-dd').format(entry.date): entry
             };
-            // --- ADDED FOR DEBUGGING ---
             if (kDebugMode) {
               print(
                   "[Calendar Debug] Loaded Data Keys: ${_calendarData.keys.toList()}");
             }
-            // --- END DEBUGGING ---
           }
           return Padding(
             padding: const EdgeInsets.all(20.0),
@@ -135,16 +140,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             DateFormat('yyyy-MM-dd').format(date);
                         final calendarDay = _calendarData[dateString];
 
-                        // --- ADDED FOR DEBUGGING ---
-                        if (calendarDay != null && kDebugMode) {
-                          print(
-                              "[Calendar Debug] Found Match for: $dateString");
+                        if (kDebugMode) {
+                          if (calendarDay != null) {
+                            print(
+                                "[Calendar Debug] Found Match for: $dateString");
+                          }
                         }
-                        // --- END DEBUGGING ---
 
-                        if (calendarDay != null &&
-                            (calendarDay.hasWorkout ||
-                                calendarDay.hasNutrition)) {
+                        if (calendarDay != null) {
                           return Positioned(
                             bottom: 4,
                             right: 0,
@@ -152,9 +155,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (calendarDay.hasWorkout)
+                                if (calendarDay.workoutId.isNotEmpty)
                                   _buildEventDot(AppColors.primaryGreen),
-                                if (calendarDay.hasNutrition)
+                                if (calendarDay.nutritionIds.isNotEmpty)
                                   _buildEventDot(AppColors.secondaryBlue),
                               ],
                             ),

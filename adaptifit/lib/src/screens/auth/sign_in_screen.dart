@@ -1,6 +1,6 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/screens/auth/create_account_screen.dart';
 import 'package:adaptifit/src/screens/auth/forgot_password_screen.dart';
@@ -13,9 +13,9 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  // Controllers to manage the text in the TextFields
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
   @override
@@ -26,46 +26,31 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _signIn() async {
-    // Show a loading indicator
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Use the controllers to get the email and password
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await _apiService.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
 
-      // We check if the widget is still mounted before touching the context.
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
-      // This will trigger the AuthGate to rebuild and navigate to the correct screen.
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const AuthGate()),
         (route) => false,
       );
-    } on FirebaseAuthException catch (e) {
-      // Handle different authentication errors
-      String message = 'An error occurred. Please check your credentials.';
-      if (e.code == 'user-not-found' || e.code == 'invalid-email') {
-        message = 'No user found for that email.';
-      } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        message = 'Wrong password provided for that user.';
-      }
-
-      // Show an error message to the user
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
           backgroundColor: AppColors.redAccent,
         ),
       );
     } finally {
-      // Hide the loading indicator
       if (mounted) {
         setState(() {
           _isLoading = false;

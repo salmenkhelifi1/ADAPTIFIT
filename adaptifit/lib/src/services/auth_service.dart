@@ -1,86 +1,70 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/models/user.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirestoreService _firestoreService = FirestoreService();
+class AuthService extends ChangeNotifier {
+  final ApiService _apiService = ApiService();
+  final _secureStorage = const FlutterSecureStorage();
+  User? _user;
 
-  // Stream to listen for authentication changes
-  Stream<User?> get user => _auth.authStateChanges();
+  User? get user => _user;
 
-  // Get the currently signed-in user
-  User? getCurrentUser() {
-    return _auth.currentUser;
+  Future<void> tryAutoLogin() async {
+    try {
+      final user = await _apiService.getMyProfile();
+      _user = user;
+      notifyListeners();
+    } catch (e) {
+      // No token, or token invalid
+    }
   }
 
-  // Sign up with Email & Password
-  Future<User?> signUpWithEmail({
+  Future<void> signUpWithEmail({
     required String email,
     required String password,
     required String firstName,
-    required Map<String, dynamic>
-        onboardingAnswers, // Added to accept onboarding data
   }) async {
     try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      User? user = result.user;
-
-      if (user != null) {
-        // Create a new document for the user with the initial info
-        await _firestoreService.createUserDocument(
-          uid: user.uid,
-          email: email,
-          firstName: firstName,
-          //  onboardingAnswers: onboardingAnswers, // Pass the answers to Firestore
-        );
-      }
-      return user;
-    } on FirebaseAuthException catch (e) {
-      debugPrint(e.message);
-      return null;
+      await _apiService.register(firstName, email, password);
+      await _loginAndSetUser(email, password);
+    } catch (e) {
+      debugPrint(e.toString());
+      rethrow;
     }
   }
 
-  // Sign in with Email & Password
-  Future<User?> signInWithEmail({
+  Future<void> signInWithEmail({
     required String email,
     required String password,
   }) async {
     try {
-      UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      return result.user;
-    } on FirebaseAuthException catch (e) {
-      debugPrint(e.message);
-      return null;
+      await _loginAndSetUser(email, password);
+    } catch (e) {
+      debugPrint(e.toString());
+      rethrow;
     }
   }
 
-  // Change Password
-  Future<bool> changePassword(
+  Future<void> _loginAndSetUser(String email, String password) async {
+    await _apiService.login(email, password);
+    _user = await _apiService.getMyProfile();
+    notifyListeners();
+  }
+
+  Future<void> changePassword(
       {required String currentPassword, required String newPassword}) async {
-    bool success = false;
     try {
-      User? user = _auth.currentUser;
-      AuthCredential credential = EmailAuthProvider.credential(
-          email: user!.email!, password: currentPassword);
-      await user.reauthenticateWithCredential(credential);
-      await user.updatePassword(newPassword);
-      success = true;
-    } on FirebaseAuthException catch (e) {
-      debugPrint(e.message);
+      await _apiService.changePassword(currentPassword, newPassword);
+    } catch (e) {
+      debugPrint(e.toString());
+      rethrow;
     }
-    return success;
   }
 
-  // Sign Out
   Future<void> signOut() async {
-    await _auth.signOut();
+    await _secureStorage.delete(key: 'jwt_token');
+    _user = null;
+    notifyListeners();
   }
 }

@@ -1,14 +1,14 @@
+
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'package:adaptifit/src/core/models/models.dart';
+import 'package:adaptifit/src/models/user.dart';
 import 'package:adaptifit/src/screens/auth/change_password_screen.dart';
 import 'package:adaptifit/src/screens/auth/welcome_screen.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
-import 'package:adaptifit/src/services/n8n_service.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 import 'package:adaptifit/src/screens/onboarding/onboarding_question_screen.dart';
 import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/core_app/injury_adaptation_notes_screen.dart';
@@ -22,21 +22,18 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  final N8nService _n8nService = N8nService();
-  final User? _currentUser = FirebaseAuth.instance.currentUser;
-  Stream<UserModel>? _userStream;
+  final ApiService _apiService = ApiService();
+  final _secureStorage = const FlutterSecureStorage();
+  late Future<User> _userFuture;
 
   @override
   void initState() {
     super.initState();
-    if (_currentUser != null) {
-      _userStream = _firestoreService.getUser();
-    }
+    _userFuture = _apiService.getMyProfile();
   }
 
   Future<void> _signOut() async {
-    await FirebaseAuth.instance.signOut();
+    await _secureStorage.delete(key: 'jwt_token');
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const WelcomeScreen()),
@@ -73,8 +70,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: StreamBuilder<UserModel>(
-        stream: _userStream,
+      body: FutureBuilder<User>(
+        future: _userFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -97,8 +94,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
                 _buildAccountInfoCard(user),
                 const SizedBox(height: 24),
-                _buildProgressCard(), // Use the new dynamic progress card
-                const SizedBox(height: 24),
                 _buildNotesCard(),
                 const SizedBox(height: 24),
                 _buildBadgesCard(),
@@ -108,12 +103,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   text: 'Rewrite Plan',
                   isPrimary: true,
                   onPressed: () {
-                    final onboardingProvider = Provider.of<OnboardingProvider>(context, listen: false);
+                    final onboardingProvider =
+                        Provider.of<OnboardingProvider>(context, listen: false);
                     onboardingProvider.setAnswers(user.onboardingAnswers);
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => const OnboardingQuestionScreen()));
+                            builder: (context) =>
+                                const OnboardingQuestionScreen()));
                   },
                 ),
                 const SizedBox(height: 16),
@@ -143,7 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // A standalone card for the main profile header
-  Widget _buildProfileHeader(UserModel user) {
+  Widget _buildProfileHeader(User user) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: _cardDecoration(),
@@ -173,7 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: AppColors.darkText)),
               const SizedBox(height: 4),
               Text(
-                'Member since ${DateFormat('MMM yyyy').format(user.createdAt.toDate())}',
+                'Member since ${DateFormat('MMM yyyy').format(DateTime.parse(user.createdAt))}',
                 style: const TextStyle(color: AppColors.grey, fontSize: 14),
               ),
             ],
@@ -204,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAccountInfoCard(UserModel user) {
+  Widget _buildAccountInfoCard(User user) {
     return _buildInfoCard(
       title: 'Account Information',
       child: Container(
@@ -235,55 +232,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildProgressCard() {
-    return FutureBuilder<Map<String, int>>(
-      future: _firestoreService.getUserProgressStats(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildInfoCard(
-            title: 'Your Progress',
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32.0),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return _buildInfoCard(
-            title: 'Your Progress',
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.0),
-              child: Center(child: Text('Could not load progress.')),
-            ),
-          );
-        }
-
-        final progressData = snapshot.data ?? {};
-        final completedWorkouts =
-            progressData['completedWorkouts']?.toString() ?? '0';
-        final mealsCompleted =
-            progressData['mealsCompleted']?.toString() ?? '0';
-        final weeks = progressData['weeks']?.toString() ?? '0';
-
-        return _buildInfoCard(
-          title: 'Your Progress',
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatColumn(completedWorkouts, 'Workouts'),
-                _buildStatColumn(mealsCompleted, 'Meals Completed'),
-                _buildStatColumn(weeks, 'Weeks'),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 

@@ -1,14 +1,15 @@
-import 'package:adaptifit/src/core/models/workout.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
+import 'package:adaptifit/src/models/nutrition.dart';
+import 'package:adaptifit/src/models/workout.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:adaptifit/src/constants/app_colors.dart'; // Assuming you have this
+import 'package:adaptifit/src/constants/app_colors.dart';
 
 class WorkoutOverviewScreen extends StatefulWidget {
-  final String workoutId;
+  final Workout workout;
 
   const WorkoutOverviewScreen({
     Key? key,
-    required this.workoutId,
+    required this.workout,
   }) : super(key: key);
 
   @override
@@ -16,12 +17,13 @@ class WorkoutOverviewScreen extends StatefulWidget {
 }
 
 class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final ApiService _apiService = ApiService();
+  late Future<Nutrition?> _nutritionFuture;
 
   @override
   void initState() {
     super.initState();
-    debugPrint("WorkoutOverviewScreen initState, workoutId: ${widget.workoutId}");
+    _nutritionFuture = _apiService.getNutritionForPlan(widget.workout.planId);
   }
 
   @override
@@ -29,54 +31,33 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     return Scaffold(
       backgroundColor: AppColors.screenBackground,
       body: SafeArea(
-        child: StreamBuilder<Workout?>(
-          stream: _firestoreService.getWorkout(widget.workoutId),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            }
-            if (!snapshot.hasData || snapshot.data == null) {
-              return const Center(child: Text('Workout not found.'));
-            }
-
-            final workout = snapshot.data!;
-
-            // The main scrollable view
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildHeader(),
-                    const SizedBox(height: 24),
-                    _buildInfoBanner(),
-                    const SizedBox(height: 16),
-                    _buildWorkoutCard(workout),
-                    const SizedBox(height: 16),
-                    _buildNutritionHeader(),
-                    const SizedBox(height: 16),
-                    _buildNutritionDetailsCard(),
-                    const SizedBox(height: 16),
-                    _buildDailySummaryCard(),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            );
-          },
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
+                _buildHeader(),
+                const SizedBox(height: 24),
+                _buildInfoBanner(),
+                const SizedBox(height: 16),
+                _buildWorkoutCard(widget.workout),
+                const SizedBox(height: 16),
+                _buildNutritionHeader(),
+                const SizedBox(height: 16),
+                _buildNutritionDetailsCard(),
+                const SizedBox(height: 16),
+                _buildDailySummaryCard(),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // --- Reusable and Helper Widgets ---
-
-  // Consistent card styling
   Widget _buildStyledContainer(
       {required Widget child, Color color = AppColors.white}) {
     return Container(
@@ -96,7 +77,6 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  // Header with back button and title
   Widget _buildHeader() {
     return Row(
       children: [
@@ -105,20 +85,19 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         const SizedBox(width: 8),
-        // TODO: Pass the real day and date to this screen
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Tuesday', // Placeholder
-              style: TextStyle(
+              widget.workout.day,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppColors.darkText,
               ),
             ),
-            Text(
-              'Tue, Dec 26', // Placeholder
+            const Text(
+              '', // No date info in workout object
               style: TextStyle(fontSize: 16, color: AppColors.subtitleGray),
             ),
           ],
@@ -127,7 +106,6 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  // Informational banner
   Widget _buildInfoBanner() {
     return _buildStyledContainer(
       color: AppColors.secondaryBlue.withOpacity(0.1),
@@ -146,7 +124,6 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  // Card displaying the workout and its exercises
   Widget _buildWorkoutCard(Workout workout) {
     return _buildStyledContainer(
       child: Column(
@@ -169,19 +146,17 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (workout.duration != null)
-                      Text(
-                        '🕒 ${workout.duration}',
-                        style: const TextStyle(
-                            color: AppColors.subtitleGray, fontSize: 14),
-                      ),
+                    Text(
+                      '🕒 ${workout.duration}',
+                      style: const TextStyle(
+                          color: AppColors.subtitleGray, fontSize: 14),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          // Using Column instead of ListView for simplicity within SingleChildScrollView
           Column(
             children: workout.exercises.asMap().entries.map((entry) {
               final index = entry.key;
@@ -200,7 +175,6 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  // A single exercise row inside the workout card
   Widget _buildExerciseItem(Exercise exercise) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -226,19 +200,17 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
             ),
           ],
         ),
-        if (exercise.rest != null)
-          Text(
-            'Rest: ${exercise.rest}',
-            style: const TextStyle(
-              color: AppColors.subtitleGray,
-              fontSize: 14,
-            ),
+        Text(
+          'Rest: ${exercise.rest}',
+          style: const TextStyle(
+            color: AppColors.subtitleGray,
+            fontSize: 14,
           ),
+        ),
       ],
     );
   }
 
-  // Card that introduces the nutrition plan
   Widget _buildNutritionHeader() {
     return _buildStyledContainer(
       child: const Row(
@@ -266,76 +238,68 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  // --- All Nutrition Widgets (using placeholder data) ---
   Widget _buildNutritionDetailsCard() {
-    // TODO: Fetch your nutrition plan data here and pass it to these widgets
-    return _buildStyledContainer(
-      child: Column(
-        children: [
-          _buildMealCard(
-            icon: '🍽️',
-            title: 'Breakfast',
-            mealName: 'Greek Yogurt Bowl',
-            items: [
-              '1 cup Greek yogurt',
-              '1/2 cup mixed berries',
-              '2 tbsp granola',
-              '1 tsp honey'
-            ],
-            calories: 320,
-            protein: 25,
-          ),
-          const Divider(height: 32),
-          _buildMealCard(
-            icon: '🥗',
-            title: 'Lunch',
-            mealName: 'Mediterranean Power Bowl',
-            items: [
-              '2 cups mixed greens',
-              '4 oz grilled chicken',
-              '1/4 cup quinoa',
-              '2 tbsp hummus',
-              '1/4 cup feta cheese'
-            ],
-            calories: 420,
-            protein: 32,
-          ),
-          const Divider(height: 32),
-          _buildMealCard(
-            icon: '🐟',
-            title: 'Dinner',
-            mealName: 'Grilled Salmon & Quinoa',
-            items: [
-              '5 oz salmon fillet',
-              '1 cup quinoa',
-              '1 cup steamed broccoli',
-              '1 tbsp lemon sauce'
-            ],
-            calories: 485,
-            protein: 35,
-          ),
-          const Divider(height: 32),
-          _buildMealCard(
-            icon: '🥜',
-            title: 'Snacks',
-            mealName: 'Post-Workout Snack',
-            items: [
-              '1 scoop protein powder',
-              '1 banana',
-              '1 cup almond milk',
-              '1 tbsp almond butter'
-            ],
-            calories: 280,
-            protein: 25,
-          ),
-          const Divider(height: 32),
-          _buildHydrationCard(),
-        ],
-      ),
-    );
+    return FutureBuilder<Nutrition?>(
+        future: _nutritionFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text('Nutrition plan not found.'));
+          }
+
+          final nutrition = snapshot.data!;
+
+          return _buildStyledContainer(
+            child: Column(
+              children: [
+                _buildMealCard(
+                  icon: '🍽️',
+                  title: 'Breakfast',
+                  mealName: nutrition.meals['breakfast']!.name,
+                  items: nutrition.meals['breakfast']!.items,
+                  calories: nutrition.meals['breakfast']!.calories,
+                  protein: nutrition.meals['breakfast']!.protein,
+                ),
+                const Divider(height: 32),
+                _buildMealCard(
+                  icon: '🥗',
+                  title: 'Lunch',
+                  mealName: nutrition.meals['lunch']!.name,
+                  items: nutrition.meals['lunch']!.items,
+                  calories: nutrition.meals['lunch']!.calories,
+                  protein: nutrition.meals['lunch']!.protein,
+                ),
+                const Divider(height: 32),
+                _buildMealCard(
+                  icon: '🐟',
+                  title: 'Dinner',
+                  mealName: nutrition.meals['dinner']!.name,
+                  items: nutrition.meals['dinner']!.items,
+                  calories: nutrition.meals['dinner']!.calories,
+                  protein: nutrition.meals['dinner']!.protein,
+                ),
+                const Divider(height: 32),
+                _buildMealCard(
+                  icon: '🥜',
+                  title: 'Snacks',
+                  mealName: nutrition.meals['snacks']!.name,
+                  items: nutrition.meals['snacks']!.items,
+                  calories: nutrition.meals['snacks']!.calories,
+                  protein: nutrition.meals['snacks']!.protein,
+                ),
+                const Divider(height: 32),
+                _buildHydrationCard(nutrition.dailyWater),
+              ],
+            ),
+          );
+        });
   }
 
-  // Reusable card for a single meal
   Widget _buildMealCard({
     required String icon,
     required String title,
@@ -385,8 +349,7 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  // Hydration specific card
-  Widget _buildHydrationCard() {
+  Widget _buildHydrationCard(String dailyWater) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -419,7 +382,7 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
                   style: const TextStyle(color: AppColors.subtitleGray))),
               const SizedBox(height: 8),
               Text(
-                'Target: 2.5L daily',
+                'Target: $dailyWater daily',
                 style: TextStyle(
                     color: AppColors.darkText.withOpacity(0.7),
                     fontWeight: FontWeight.w500),
@@ -431,7 +394,6 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  // Daily Summary section at the bottom
   Widget _buildDailySummaryCard() {
     // TODO: Pass real summary data here
     return _buildStyledContainer(
@@ -466,7 +428,6 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  // A single stat box for the summary
   Widget _buildStatItem(String value, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),

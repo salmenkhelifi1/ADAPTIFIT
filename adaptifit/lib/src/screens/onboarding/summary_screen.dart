@@ -3,10 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/core_app/main_scaffold.dart';
-import 'package:adaptifit/src/services/auth_service.dart';
-import 'package:adaptifit/src/services/firestore_service.dart';
-import 'package:adaptifit/src/services/n8n_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:adaptifit/src/services/api_service.dart';
 
 class SummaryScreen extends StatefulWidget {
   const SummaryScreen({super.key});
@@ -16,9 +13,7 @@ class SummaryScreen extends StatefulWidget {
 }
 
 class _SummaryScreenState extends State<SummaryScreen> {
-  final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
-  final N8nService _n8nService = N8nService();
+  final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
   void _finishOnboarding() async {
@@ -26,13 +21,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
     final onboardingProvider =
         Provider.of<OnboardingProvider>(context, listen: false);
-    final User? user = _authService.getCurrentUser();
 
-    if (user != null) {
+    try {
       final answers = onboardingProvider.answers;
-      await _firestoreService.updateOnboardingAnswers(answers);
-      await _n8nService.triggerPlanGeneration(
-          userId: user.uid, onboardingAnswers: answers);
+      await _apiService.submitOnboarding(answers);
+      await _apiService.regeneratePlan();
 
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
@@ -40,11 +33,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
           (Route<dynamic> route) => false,
         );
       }
-    } else {
-      // Handle error: user somehow not logged in
+    } catch (e) {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Could not find logged in user.')),
+        SnackBar(content: Text('Error: ${e.toString()}')),
       );
     }
   }
