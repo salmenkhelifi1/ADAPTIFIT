@@ -128,8 +128,7 @@ class _CoachScreenState extends State<CoachScreen> {
           children: [
             CircleAvatar(
               backgroundColor: AppColors.primaryGreen,
-              child:
-                  Icon(Icons.auto_awesome, color: AppColors.white, size: 20),
+              child: Icon(Icons.auto_awesome, color: AppColors.white, size: 20),
             ),
             SizedBox(width: 12),
             Column(
@@ -145,8 +144,8 @@ class _CoachScreenState extends State<CoachScreen> {
                 ),
                 Text(
                   'Your AI fitness coach',
-                  style: TextStyle(
-                      color: AppColors.timestampGray, fontSize: 14),
+                  style:
+                      TextStyle(color: AppColors.timestampGray, fontSize: 14),
                 ),
               ],
             ),
@@ -336,7 +335,8 @@ class ChatBubble extends StatelessWidget {
               : const EdgeInsets.only(left: 48.0, top: 4),
           child: Text(
             time,
-            style: const TextStyle(color: AppColors.timestampGray, fontSize: 12),
+            style:
+                const TextStyle(color: AppColors.timestampGray, fontSize: 12),
           ),
         ),
         const SizedBox(height: 8),
@@ -366,7 +366,8 @@ class TypingIndicator extends StatelessWidget {
           ),
           child: const Text(
             'Coach is typing...', // Corrected escaping for single quote
-            style: TextStyle(color: AppColors.timestampGray, fontStyle: FontStyle.italic),
+            style: TextStyle(
+                color: AppColors.timestampGray, fontStyle: FontStyle.italic),
           ),
         ),
       ],

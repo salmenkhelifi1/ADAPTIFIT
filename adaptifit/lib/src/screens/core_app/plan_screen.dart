@@ -32,18 +32,35 @@ class _PlanScreenState extends State<PlanScreen> {
     _plansFuture = _apiService.getMyPlans();
   }
 
-  Future<void> _toggleCompletion(DateTime date, bool currentStatus) async {
+  Future<void> _completeWorkout(DateTime date, bool completed) async {
     try {
-      await _apiService.updateCalendarEntry(date, completed: !currentStatus);
-      // Refresh the calendar entry
+      await _apiService.completeWorkout(date, completed: completed);
+      // Refresh the calendar entry to update the completed status
       setState(() {
-        _calendarEntryFuture = _apiService.getCalendarEntry(date);
+        _calendarEntryFuture = _apiService.getCalendarEntry(DateTime.now());
       });
     } catch (e) {
-      debugPrint("Error updating completion status: $e");
+      debugPrint("Error completing workout: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update status.')),
+          const SnackBar(content: Text('Failed to complete workout.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _completeNutrition(DateTime date, String nutritionId) async {
+    try {
+      await _apiService.completeNutrition(date, nutritionId);
+      // Refresh the calendar entry to update the completed status
+      setState(() {
+        _calendarEntryFuture = _apiService.getCalendarEntry(DateTime.now());
+      });
+    } catch (e) {
+      debugPrint("Error completing nutrition: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to complete nutrition.')),
         );
       }
     }
@@ -278,7 +295,7 @@ class _PlanScreenState extends State<PlanScreen> {
   }
 
   Widget _buildWorkoutCard(Workout workout, CalendarEntry calendar) {
-    final bool isCompleted = calendar.completed ?? false;
+    final bool isCompleted = calendar.workoutCompleted;
     const primaryGreen = Color(0xFF1EB955);
 
     return _buildStyledContainer(
@@ -321,7 +338,7 @@ class _PlanScreenState extends State<PlanScreen> {
               child: const Text('View Details >', style: TextStyle(color: primaryGreen, fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-              onPressed: isCompleted ? null : () => _toggleCompletion(calendar.date!, isCompleted),
+              onPressed: isCompleted ? null : () => _completeWorkout(calendar.date, !isCompleted),
               style: ElevatedButton.styleFrom(
                   backgroundColor: isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,
                   disabledBackgroundColor: const Color(0xFFE0E0E0),
@@ -344,7 +361,7 @@ class _PlanScreenState extends State<PlanScreen> {
   }
 
   Widget _buildNutritionCard(Nutrition nutrition, CalendarEntry calendar) {
-    final bool isCompleted = calendar.completed ?? false;
+    final bool isCompleted = calendar.completedNutritionIds.contains(nutrition.id);
     const primaryBlue = Color(0xFF3A7DFF);
     const primaryGreen = Color(0xFF1EB955);
 
@@ -384,7 +401,7 @@ class _PlanScreenState extends State<PlanScreen> {
               child: const Text('View Details >', style: TextStyle(color: primaryGreen, fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-              onPressed: isCompleted ? null : () => _toggleCompletion(calendar.date!, isCompleted),
+              onPressed: isCompleted ? null : () => _completeNutrition(calendar.date, nutrition.id),
               style: ElevatedButton.styleFrom(
                   backgroundColor: isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,
                   disabledBackgroundColor: const Color(0xFFE0E0E0),

@@ -1,4 +1,3 @@
-
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -57,17 +56,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.bold,
                 fontSize: 28)),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: AppColors.primaryGreen.withOpacity(0.2),
-              child: const Text('A', // Placeholder for your app logo
-                  style: TextStyle(
-                      color: AppColors.primaryGreen,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18)),
-            ),
-          ),
+          //   Padding(
+          //     padding: const EdgeInsets.only(right: 16.0),
+          //     child: CircleAvatar(
+          //       backgroundColor: AppColors.primaryGreen.withOpacity(0.2),
+          //       child: const Text('A', // Placeholder for your app logo
+          //           style: TextStyle(
+          //               color: AppColors.primaryGreen,
+          //               fontWeight: FontWeight.w900,
+          //               fontSize: 18)),
+          //     ),
+          //   ),
+          //
         ],
       ),
       body: FutureBuilder<User>(

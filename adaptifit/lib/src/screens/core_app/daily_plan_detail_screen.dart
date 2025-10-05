@@ -7,6 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 
+class _PlanDetails {
+  final Workout? workout;
+  final Nutrition? nutrition;
+
+  _PlanDetails({this.workout, this.nutrition});
+}
+
 class DailyPlanDetailScreen extends StatefulWidget {
   final DateTime date;
 
@@ -18,12 +25,36 @@ class DailyPlanDetailScreen extends StatefulWidget {
 
 class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
   final ApiService _apiService = ApiService();
-  late Future<CalendarEntry?> _calendarDayFuture;
+  late Future<_PlanDetails> _planDetailsFuture;
 
   @override
   void initState() {
     super.initState();
-    _calendarDayFuture = _apiService.getCalendarEntry(widget.date);
+    _planDetailsFuture = _loadPlanDetails();
+  }
+
+  Future<_PlanDetails> _loadPlanDetails() async {
+    final calendarDay = await _apiService.getCalendarEntry(widget.date);
+    if (calendarDay == null) {
+      return _PlanDetails();
+    }
+
+    final workoutFuture = calendarDay.workoutId.isNotEmpty
+        ? _apiService.getWorkoutsForPlan(calendarDay.planId)
+        : Future.value(null);
+
+    final nutritionFuture = calendarDay.nutritionIds.isNotEmpty
+        ? _apiService.getNutritionForPlan(calendarDay.planId)
+        : Future.value(null);
+
+    final results = await Future.wait([workoutFuture, nutritionFuture]);
+
+    final workouts = results[0] as List<Workout>?;
+    final nutrition = results[1] as Nutrition?;
+
+    final workout = workouts?.firstWhere((w) => w.id == calendarDay.workoutId);
+
+    return _PlanDetails(workout: workout, nutrition: nutrition);
   }
 
   @override
@@ -58,8 +89,8 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
         ),
         centerTitle: true,
       ),
-      body: FutureBuilder<CalendarEntry?>(
-        future: _calendarDayFuture,
+      body: FutureBuilder<_PlanDetails>(
+        future: _planDetailsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -67,11 +98,13 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
           if (snapshot.hasError) {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
-          if (!snapshot.hasData || snapshot.data == null) {
+          if (!snapshot.hasData || (snapshot.data!.workout == null && snapshot.data!.nutrition == null)) {
             return _buildNoPlanMessage();
           }
 
-          final calendarDay = snapshot.data!;
+          final planDetails = snapshot.data!;
+          final workout = planDetails.workout;
+          final nutrition = planDetails.nutrition;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
@@ -79,42 +112,15 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
               children: [
                 _buildPreviewBanner(),
                 const SizedBox(height: 20),
-                if (calendarDay.workoutId.isNotEmpty)
-                  FutureBuilder<List<Workout>>(
-                    future: _apiService.getWorkoutsForPlan(calendarDay.planId),
-                    builder: (context, workoutSnapshot) {
-                      if (workoutSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (workoutSnapshot.hasError) {
-                        return Text("Error: ${workoutSnapshot.error}");
-                      }
-                      if (!workoutSnapshot.hasData || workoutSnapshot.data!.isEmpty) {
-                        return const Text("Workout not found");
-                      }
-                      final workout = workoutSnapshot.data!.firstWhere((w) => w.id == calendarDay.workoutId);
-                      return _buildWorkoutCard(workout);
-                    },
-                  ),
-                if (calendarDay.nutritionIds.isNotEmpty) ...[
+                if (workout != null)
+                  _buildWorkoutCard(workout),
+                if (nutrition != null) ...[
                   const SizedBox(height: 20),
-                  FutureBuilder<Nutrition>(
-                    future: _apiService.getNutritionForPlan(calendarDay.planId),
-                    builder: (context, nutritionSnapshot) {
-                      if (nutritionSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (nutritionSnapshot.hasError) {
-                        return Text("Error: ${nutritionSnapshot.error}");
-                      }
-                      if (!nutritionSnapshot.hasData) {
-                        return const SizedBox.shrink();
-                      }
-                      return _buildNutritionCard(nutritionSnapshot.data!);
-                    },
-                  ),
+                  _buildNutritionHeader(),
+                  const SizedBox(height: 16),
+                  _buildNutritionDetailsCard(nutrition),
+                  const SizedBox(height: 16),
+                  _buildDailySummaryCard(workout, nutrition),
                 ]
               ],
             ),
@@ -213,7 +219,65 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
     );
   }
 
-  Widget _buildNutritionCard(Nutrition nutrition) {
+  Widget _buildNutritionDetailsCard(Nutrition nutrition) {
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            spreadRadius: 2,
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildMealCard(
+            icon: '🍽️',
+            title: 'Breakfast',
+            mealName: nutrition.meals['breakfast']!.name,
+            items: nutrition.meals['breakfast']!.items,
+            calories: nutrition.meals['breakfast']!.calories,
+            protein: nutrition.meals['breakfast']!.protein,
+          ),
+          const Divider(height: 32),
+          _buildMealCard(
+            icon: '🥗',
+            title: 'Lunch',
+            mealName: nutrition.meals['lunch']!.name,
+            items: nutrition.meals['lunch']!.items,
+            calories: nutrition.meals['lunch']!.calories,
+            protein: nutrition.meals['lunch']!.protein,
+          ),
+          const Divider(height: 32),
+          _buildMealCard(
+            icon: '🐟',
+            title: 'Dinner',
+            mealName: nutrition.meals['dinner']!.name,
+            items: nutrition.meals['dinner']!.items,
+            calories: nutrition.meals['dinner']!.calories,
+            protein: nutrition.meals['dinner']!.protein,
+          ),
+          const Divider(height: 32),
+          _buildMealCard(
+            icon: '🥜',
+            title: 'Snacks',
+            mealName: nutrition.meals['snacks']!.name,
+            items: nutrition.meals['snacks']!.items,
+            calories: nutrition.meals['snacks']!.calories,
+            protein: nutrition.meals['snacks']!.protein,
+          ),
+          const Divider(height: 32),
+          _buildHydrationCard(nutrition.dailyWater),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNutritionHeader() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -227,20 +291,24 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Text('🍎', style: TextStyle(fontSize: 24)),
-          const SizedBox(width: 12),
+          Icon(Icons.apple, color: AppColors.secondaryBlue, size: 28),
+          SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                nutrition.name,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                'High Protein Focus', // Placeholder
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              const Text('Personalized meal plan',
-                  style: TextStyle(color: AppColors.subtitleGray)),
+              Text(
+                'Personalized meal plan', // Placeholder
+                style: TextStyle(color: AppColors.subtitleGray, fontSize: 14),
+              ),
             ],
           ),
         ],
@@ -265,6 +333,177 @@ class _DailyPlanDetailScreenState extends State<DailyPlanDetailScreen> {
                 style: TextStyle(fontSize: 16, color: Colors.black54)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMealCard({
+    required String icon,
+    required String title,
+    required String mealName,
+    required List<String> items,
+    required int calories,
+    required int protein,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.only(left: 28.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                mealName,
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              ...items.map((item) => Text('· $item',
+                  style: const TextStyle(color: AppColors.subtitleGray))),
+              const SizedBox(height: 8),
+              Text(
+                '${calories} cal · ${protein}g protein',
+                style: TextStyle(
+                    color: AppColors.darkText.withOpacity(0.7),
+                    fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        )
+      ],
+    );
+  }
+
+  Widget _buildHydrationCard(String dailyWater) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Text('💧', style: TextStyle(fontSize: 20)),
+            SizedBox(width: 8),
+            Text(
+              'Hydration',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.only(left: 28.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Daily Hydration Goals',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              ...[
+                '8-10 glasses of water',
+                '1 cup green tea',
+                'Electrolyte drink post-workout'
+              ].map((item) => Text('· $item',
+                  style: const TextStyle(color: AppColors.subtitleGray))),
+              const SizedBox(height: 8),
+              Text(
+                'Target: $dailyWater daily',
+                style: TextStyle(
+                    color: AppColors.darkText.withOpacity(0.7),
+                    fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        )
+      ],
+    );
+  }
+
+  Widget _buildDailySummaryCard(Workout? workout, Nutrition? nutrition) {
+    int totalCalories = 0;
+    int totalProtein = 0;
+    if (nutrition != null) {
+      for (var meal in nutrition.meals.values) {
+        totalCalories += meal.calories;
+        totalProtein += meal.protein;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            spreadRadius: 2,
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Daily Summary',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: _buildStatItem('$totalCalories', 'Total Calories')),
+              const SizedBox(width: 12),
+              Expanded(child: _buildStatItem('${totalProtein}g', 'Total Protein')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildStatItem(workout?.duration ?? '0 minutes', 'Workout Duration')),
+              const SizedBox(width: 12),
+              Expanded(child: _buildStatItem(nutrition?.dailyWater ?? '0L', 'Hydration Goal')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.subtitleGray, fontSize: 14),
+          ),
+        ],
       ),
     );
   }

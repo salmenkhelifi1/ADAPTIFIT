@@ -7,9 +7,9 @@ class Macros {
 
   factory Macros.fromJson(Map<String, dynamic> json) {
     return Macros(
-      carbs: json['carbs'],
-      fats: json['fats'],
-      protein: json['protein'],
+      carbs: json['carbs'] ?? '',
+      fats: json['fats'] ?? '',
+      protein: json['protein'] ?? '',
     );
   }
 }
@@ -29,10 +29,10 @@ class Meal {
 
   factory Meal.fromJson(Map<String, dynamic> json) {
     return Meal(
-      name: json['name'],
-      items: List<String>.from(json['items']),
-      calories: json['calories'],
-      protein: json['protein'],
+      name: json['name'] ?? '',
+      items: List<String>.from(json['items'] ?? []),
+      calories: json['calories'] ?? 0,
+      protein: json['protein'] ?? 0,
     );
   }
 }
@@ -57,16 +57,16 @@ class Nutrition {
   });
 
   factory Nutrition.fromJson(Map<String, dynamic> json) {
-    var mealsMap = json['meals'] as Map<String, dynamic>;
+    var mealsMap = json['meals'] as Map<String, dynamic>? ?? {};
     Map<String, Meal> meals = mealsMap.map((key, value) => MapEntry(key, Meal.fromJson(value)));
 
     return Nutrition(
-      id: json['_id'],
-      planId: json['planId'],
-      name: json['name'],
-      dailyCalories: json['dailyCalories'],
-      dailyWater: json['dailyWater'],
-      macros: Macros.fromJson(json['macros']),
+      id: json['_id'] ?? '',
+      planId: json['planId'] ?? '',
+      name: json['name'] ?? '',
+      dailyCalories: json['dailyCalories'] ?? 0,
+      dailyWater: json['dailyWater'] ?? '',
+      macros: json['macros'] != null ? Macros.fromJson(json['macros']) : Macros(carbs: '', fats: '', protein: ''),
       meals: meals,
     );
   }

@@ -148,19 +148,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         }
 
                         if (calendarDay != null) {
-                          return Positioned(
-                            bottom: 4,
-                            right: 0,
-                            left: 0,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (calendarDay.workoutId.isNotEmpty)
-                                  _buildEventDot(AppColors.primaryGreen),
-                                if (calendarDay.nutritionIds.isNotEmpty)
-                                  _buildEventDot(AppColors.secondaryBlue),
-                              ],
-                            ),
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (calendarDay.workoutId.isNotEmpty)
+                                _buildEventDot(AppColors.primaryGreen),
+                              if (calendarDay.nutritionIds.isNotEmpty)
+                                _buildEventDot(AppColors.secondaryBlue),
+                            ],
                           );
                         }
                         return null;

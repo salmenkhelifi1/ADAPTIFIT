@@ -15,11 +15,11 @@ class Exercise {
 
   factory Exercise.fromJson(Map<String, dynamic> json) {
     return Exercise(
-      name: json['name'],
-      sets: json['sets'],
-      reps: json['reps'],
-      rest: json['rest'],
-      instructions: json['instructions'],
+      name: json['name'] ?? '',
+      sets: json['sets'] ?? 0,
+      reps: json['reps'] ?? '',
+      rest: json['rest'] ?? '',
+      instructions: json['instructions'] ?? '',
     );
   }
 }
@@ -44,16 +44,16 @@ class Workout {
   });
 
   factory Workout.fromJson(Map<String, dynamic> json) {
-    var exercisesList = json['exercises'] as List;
+    var exercisesList = json['exercises'] as List? ?? [];
     List<Exercise> exercises = exercisesList.map((i) => Exercise.fromJson(i)).toList();
 
     return Workout(
-      id: json['_id'],
-      planId: json['planId'],
-      name: json['name'],
-      day: json['day'],
-      duration: json['duration'],
-      targetMuscles: List<String>.from(json['targetMuscles']),
+      id: json['_id'] ?? '',
+      planId: json['planId'] ?? '',
+      name: json['name'] ?? '',
+      day: json['day'] ?? '',
+      duration: json['duration'] ?? '',
+      targetMuscles: List<String>.from(json['targetMuscles'] ?? []),
       exercises: exercises,
     );
   }

@@ -167,6 +167,19 @@ class ApiService {
     }
   }
 
+  Future<Nutrition> getNutritionById(String nutritionId) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/nutrition/$nutritionId'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return Nutrition.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load nutrition: ${response.body}');
+    }
+  }
+
   Future<void> regeneratePlan() async {
     final response = await http.post(
       Uri.parse('$_baseUrl/api/plans/regenerate'),
@@ -189,18 +202,25 @@ class ApiService {
 
     if (response.statusCode == 200) {
       if (response.body.isEmpty) return null;
-      return CalendarEntry.fromJson(jsonDecode(response.body));
+      final dynamic responseBody = jsonDecode(response.body);
+      if (responseBody is Map<String, dynamic> && responseBody.containsKey('data')) {
+        return CalendarEntry.fromJson(responseBody['data']);
+      } else {
+        // If the response is not in the expected format, maybe it's the entry itself
+        return CalendarEntry.fromJson(responseBody);
+      }
+    } else if (response.statusCode == 404) {
+      return null;
     } else {
       throw Exception('Failed to load calendar entry: ${response.body}');
     }
   }
 
-  Future<CalendarEntry> updateCalendarEntry(DateTime date,
-      {required bool completed}) async {
+  Future<CalendarEntry> completeDay(DateTime date, {required bool completed}) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final response = await http.put(
-      Uri.parse('$_baseUrl/api/calendar/$dateString'),
+      Uri.parse('$_baseUrl/api/calendar/$dateString/day/complete'),
       headers: await _getHeaders(),
       body: jsonEncode({'completed': completed}),
     );
@@ -208,22 +228,53 @@ class ApiService {
     if (response.statusCode == 200) {
       return CalendarEntry.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to update calendar entry: ${response.body}');
+      throw Exception('Failed to complete day: ${response.body}');
+    }
+  }
+
+  Future<CalendarEntry> completeWorkout(DateTime date, {required bool completed}) async {
+    final dateString =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/calendar/$dateString/workout/complete'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'workoutCompleted': completed}),
+    );
+
+    if (response.statusCode == 200) {
+      return CalendarEntry.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to complete workout: ${response.body}');
+    }
+  }
+
+  Future<CalendarEntry> completeNutrition(DateTime date, String nutritionId) async {
+    final dateString =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/calendar/$dateString/nutrition/$nutritionId/complete'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return CalendarEntry.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to complete nutrition: ${response.body}');
     }
   }
 
   Future<List<CalendarEntry>> getCalendarEntries() async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/api/calendar'),
+      Uri.parse('$_baseUrl/api/calendar/'),
       headers: await _getHeaders(),
     );
 
     if (response.statusCode == 200) {
-      final dynamic entriesJson = jsonDecode(response.body);
-      if (entriesJson is List) {
+      print(response.body);
+      final dynamic responseBody = jsonDecode(response.body);
+      if (responseBody is Map<String, dynamic> && responseBody.containsKey('data')) {
+        final List<dynamic> entriesJson = responseBody['data'];
         return entriesJson.map((json) => CalendarEntry.fromJson(json)).toList();
-      } else if (entriesJson is Map<String, dynamic>) {
-        return [CalendarEntry.fromJson(entriesJson)];
       } else {
         throw Exception('Unexpected response format for calendar entries');
       }

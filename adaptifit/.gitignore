@@ -46,3 +46,13 @@ app.*.map.json
 /android/app/release
 lib/firebase_options.dart
 lib/firebase_options.dart
+adaptifit/android/app/google-services.json
+adaptifit/firebase.json
+lib/firebase_options.dart
+adaptifit/.env
+adaptifit/android/key.properties
+adaptifit/android/app/key.properties
+adaptifit/ios/Runner/GoogleService-Info.plist
+adaptifit/ios/Runner/GoogleService-Info.plist
+adaptifit/ios/Flutter/GoogleService-Info.plist
+adaptifit/ios/key.properties

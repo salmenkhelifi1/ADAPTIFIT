@@ -1,4 +1,3 @@
-
 # ADAPTIFIT Backend API Documentation
 
 This document provides a complete reference for all the API endpoints available in the Adaptifit backend.
@@ -17,7 +16,8 @@ Registers a new user and returns a JWT token.
 {
   "name": "Test User",
   "email": "test@example.com",
-  "password": "password123"
+  "password": "password123",
+  "confirmPassword": "password123"
 }
 ```
 
@@ -32,7 +32,7 @@ Registers a new user and returns a JWT token.
 }
 ```
 
-<br>
+---
 
 ### `POST /api/auth/login`
 
@@ -60,7 +60,7 @@ Authenticates an existing user and returns a JWT token.
 }
 ```
 
-<br>
+---
 
 ### `POST /api/auth/change-password`
 
@@ -88,7 +88,67 @@ Allows a logged-in user to change their password.
 }
 ```
 
------
+---
+
+### `POST /api/auth/forgot-password`
+
+Requests a password reset token for a user. This will trigger an email to be sent to the user with a reset link.
+
+**Authentication:** None.
+
+**Request Body:**
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "If an account with this email exists, a password reset link has been sent."
+}
+```
+
+---
+
+### `POST /api/auth/reset-password`
+
+Resets a user's password using a valid reset token.
+
+**Authentication:** None.
+
+**Request Body:**
+
+```json
+{
+  "token": "THE_TOKEN_FROM_THE_EMAIL_LINK",
+  "newPassword": "the-user-new-password"
+}
+```
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "Password has been reset successfully."
+}
+```
+
+**Response (Error):**
+
+```json
+{
+  "success": false,
+  "message": "Invalid or expired password reset token."
+}
+```
+
+---
 
 ## User Routes (`routes/users.js`)
 
@@ -102,7 +162,19 @@ Gets the profile of the currently logged-in user.
 
 Returns the user object (without the password).
 
-<br>
+```json
+{
+  "_id": "652d7e8e9a7b6c5d4e3f2a1b",
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "onboardingAnswers": { /* ... */ },
+  "onboardingCompleted": true,
+  "createdAt": "2023-10-16T10:00:00.000Z",
+  "updatedAt": "2023-10-16T10:30:00.000Z"
+}
+```
+
+---
 
 ### `PUT /api/users/onboarding`
 
@@ -137,6 +209,40 @@ Updates the user's onboarding answers and sets `onboardingCompleted` to `true`.
 
 Returns the updated user object.
 
+```json
+{
+  "success": true,
+  "message": "Onboarding answers updated successfully!",
+  "data": { /* Updated user object */ }
+}
+```
+
+---
+
+### `GET /api/users/full-profile`
+
+Gets all comprehensive data for the logged-in user, including profile, onboarding answers, calendar entries, chat history, plans, workouts, and nutrition information. This endpoint is designed to provide a complete context for AI interactions.
+
+**Authentication:** JWT Token required.
+
+**Response:**
+
+Returns a JSON object containing all user-related data.
+
+```json
+{
+    "success": true,
+    "data": {
+        "user": { /* User profile object */ },
+        "calendarEntries": [ /* Array of calendar entry objects */ ],
+        "chatHistory": [ /* Array of chat message objects */ ],
+        "plans": [ /* Array of plan objects */ ],
+        "workouts": [ /* Array of workout objects */ ],
+        "nutritionEntries": [ /* Array of nutrition entry objects */ ]
+    }
+}
+```
+
 -----
 
 ## Plan Routes (`routes/plans.js`)
@@ -164,7 +270,14 @@ Creates a new workout plan. Intended for use by an n8n webhook.
 
 Returns the newly created plan object.
 
-<br>
+```json
+{
+  "success": true,
+  "data": { /* New plan object */ }
+}
+```
+
+---
 
 ### `GET /api/plans`
 
@@ -176,7 +289,14 @@ Gets all plans for the logged-in user.
 
 Returns an array of plan objects.
 
-<br>
+```json
+[
+  { /* plan object 1 */ },
+  { /* plan object 2 */ }
+]
+```
+
+---
 
 ### `POST /api/plans/regenerate`
 
@@ -187,6 +307,10 @@ Triggers the n8n webhook to regenerate a plan for the user based on their saved 
 **Response:**
 
 Returns the response from the n8n webhook.
+
+```json
+{ /* Response from n8n webhook */ }
+```
 
 -----
 
@@ -230,7 +354,14 @@ Creates a new workout. Intended for use by an n8n webhook.
 
 Returns the newly created workout object.
 
-<br>
+```json
+{
+  "success": true,
+  "data": { /* New workout object */ }
+}
+```
+
+---
 
 ### `GET /api/workouts/plan/:planId`
 
@@ -240,11 +371,47 @@ Gets all workouts associated with a specific plan.
 
 **URL Parameters:**
 
-  * `planId`: The ID of the plan.
+*   `planId`: The ID of the plan.
 
 **Response:**
 
 Returns an array of workout objects.
+
+```json
+[
+  { /* workout object 1 */ },
+  { /* workout object 2 */ }
+]
+```
+
+---
+
+### `POST /api/workouts/:workoutId/complete`
+
+Marks a workout as complete and updates user progress (completed workouts, current streak, longest streak, last workout date, and badges).
+
+**Authentication:** JWT Token required.
+
+**URL Parameters:**
+
+*   `workoutId`: The ID of the workout to mark as complete.
+
+**Response:**
+
+Returns the updated user progress object.
+
+```json
+{
+  "success": true,
+  "data": {
+    "completedWorkouts": 10,
+    "currentStreak": 3,
+    "longestStreak": 5,
+    "lastWorkoutDate": "2024-10-05T00:00:00.000Z",
+    "badges": ["first-workout"]
+  }
+}
+```
 
 -----
 
@@ -302,7 +469,14 @@ Creates a new nutrition plan. Intended for use by an n8n webhook.
 
 Returns the newly created nutrition plan object.
 
-<br>
+```json
+{
+  "success": true,
+  "data": { /* New nutrition plan object */ }
+}
+```
+
+---
 
 ### `GET /api/nutrition/plan/:planId`
 
@@ -312,11 +486,15 @@ Gets the nutrition plan for a specific plan.
 
 **URL Parameters:**
 
-  * `planId`: The ID of the plan.
+*   `planId`: The ID of the plan.
 
 **Response:**
 
 Returns the nutrition plan object.
+
+```json
+{ /* Nutrition plan object */ }
+```
 
 -----
 
@@ -344,7 +522,36 @@ Creates a new calendar entry. Intended for use by an n8n webhook.
 
 Returns the newly created calendar entry object.
 
-<br>
+```json
+{
+  "success": true,
+  "data": { /* New calendar entry object */ }
+}
+```
+
+---
+
+### `GET /api/calendar`
+
+Gets all calendar entries for the logged-in user.
+
+**Authentication:** JWT Token required.
+
+**Response:**
+
+Returns an array of calendar entry objects, sorted by date.
+
+```json
+{
+  "success": true,
+  "data": [
+    { /* calendar entry 1 */ },
+    { /* calendar entry 2 */ }
+  ]
+}
+```
+
+---
 
 ### `GET /api/calendar/:date`
 
@@ -354,13 +561,17 @@ Gets the calendar entry for a specific date (format: YYYY-MM-DD).
 
 **URL Parameters:**
 
-  * `date`: The date of the entry to retrieve.
+*   `date`: The date of the entry to retrieve.
 
 **Response:**
 
 Returns the calendar entry object for the specified date.
 
-<br>
+```json
+{ /* Calendar entry object for the date */ }
+```
+
+---
 
 ### `PUT /api/calendar/:date`
 
@@ -370,7 +581,7 @@ Marks a calendar entry for a specific date as complete or incomplete.
 
 **URL Parameters:**
 
-  * `date`: The date of the entry to update.
+*   `date`: The date of the entry to update.
 
 **Request Body:**
 
@@ -384,13 +595,20 @@ Marks a calendar entry for a specific date as complete or incomplete.
 
 Returns the updated calendar entry object.
 
+```json
+{
+  "success": true,
+  "data": { /* Updated calendar entry object */ }
+}
+```
+
 -----
 
 ## Chat Routes (`routes/chat.js`)
 
 ### `POST /api/chat`
 
-Posts a message from the user, triggers a webhook to get an AI response, and saves both messages to the database.
+Posts a message from the user, triggers a webhook to get an AI response, and saves both messages to the database. The user's authentication token is also sent to the webhook for additional context.
 
 **Authentication:** JWT Token required.
 
@@ -399,6 +617,16 @@ Posts a message from the user, triggers a webhook to get an AI response, and sav
 ```json
 {
   "text": "What should I eat before a workout?"
+}
+```
+
+**Webhook Payload (sent to `process.env.ASK_COACH_WEBHOOK_URL`):**
+
+```json
+{
+  "userId": "<USER_ID>",
+  "prompt": "<USER_MESSAGE_TEXT>",
+  "token": "Bearer <YOUR_JWT_TOKEN>"
 }
 ```
 
@@ -417,7 +645,7 @@ Posts a message from the user, triggers a webhook to get an AI response, and sav
 }
 ```
 
-<br>
+---
 
 ### `GET /api/chat`
 
@@ -429,30 +657,40 @@ Gets the entire chat history for the logged-in user.
 
 Returns an array of all chat message objects for the user, sorted by timestamp.
 
+```json
+[
+  { /* chat message object 1 */ },
+  { /* chat message object 2 */ }
+]
+```
 
+-----
 
-_____
 Instructions for Flutter Chat Implementation
+
 Hello! We have updated the backend with a new API for the "Ask the Coach" chat feature. This new system ensures all chat messages are saved in our main database, providing a persistent chat history for users. Please replace the existing Firebase and direct n8n webhook implementation with the following API-driven approach.
 
 API Overview
+
 The new chat functionality is handled by two endpoints:
 
-GET /api/chat
+*   `GET /api/chat`
 
-Purpose: Fetches the entire chat history for the logged-in user.
-When to use: Call this once when the user opens the chat screen to load all previous messages.
-POST /api/chat
+    Purpose: Fetches the entire chat history for the logged-in user.
+    When to use: Call this once when the user opens the chat screen to load all previous messages.
 
-Purpose: Sends a new user message and gets the AI's reply.
-When to use: Call this every time the user sends a message.
-Request Body: { "text": "The user's message" }
-Response: The backend handles saving both the user and AI messages and returns only the new AI message object.
-Authentication: All requests to these endpoints must include the user's JWT token in the header: Authorization: Bearer <YOUR_JWT_TOKEN>
+*   `POST /api/chat`
 
-Data Model: Chat Message
+    Purpose: Sends a new user message and gets the AI's reply.
+    When to use: Call this every time the user sends a message.
+    Request Body: `{ "text": "The user's message" }`
+    Response: The backend handles saving both the user and AI messages and returns only the new AI message object.
+    Authentication: All requests to these endpoints must include the user's JWT token in the header: `Authorization: Bearer <YOUR_JWT_TOKEN>`
+
+Data Model: `ChatMessage`
 All chat messages, both from the user and the AI, will have this structure:
 
+```json
 {
   "_id": "messageId",
   "userId": "userId",
@@ -460,12 +698,15 @@ All chat messages, both from the user and the AI, will have this structure:
   "sender": "user", // or "ai"
   "timestamp": "2024-10-04T10:00:00.000Z"
 }
+```
+
 Flutter Implementation Guide
 Here’s how to integrate this into the Flutter app.
 
-Step 1: Create a ChatApiService
-Create a new service to handle the API calls. This will replace the askAiCoach logic in your old N8nService.
+Step 1: Create a `ChatApiService`
+Create a new service to handle the API calls. This will replace the `askAiCoach` logic in your old `N8nService`.
 
+```dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -537,18 +778,23 @@ class ChatApiService {
     }
   }
 }
-Step 2: Update Your Chat Screen UI
-In your chat screen widget (e.g., ChatScreen.dart), use this new service.
+```
 
-State: Maintain a list of ChatMessage objects: List<ChatMessage> messages = [];
-Load History: When the screen initializes (initState), call chatApiService.getChatHistory() to populate the messages list.
-Send Message:
-When the user taps the send button:
-Create a temporary user ChatMessage object and add it to your messages list to update the UI instantly.
-Call chatApiService.sendMessage(text).
-When you get the response (which is the AI's ChatMessage), add that object to the messages list and update the UI.
+Step 2: Update Your Chat Screen UI
+In your chat screen widget (e.g., `ChatScreen.dart`), use this new service.
+
+*   **State:** Maintain a list of `ChatMessage` objects: `List<ChatMessage> messages = [];`
+*   **Load History:** When the screen initializes (`initState`), call `chatApiService.getChatHistory()` to populate the `messages` list.
+
+*   **Send Message:**
+    *   When the user taps the send button:
+        *   Create a temporary user `ChatMessage` object and add it to your `messages` list to update the UI instantly.
+        *   Call `chatApiService.sendMessage(text)`.
+        *   When you get the response (which is the AI's `ChatMessage`), add that object to the `messages` list and update the UI.
+
 Example UI Logic:
 
+```dart
 // Inside your ChatScreen's state class
 
 late final ChatApiService _chatApiService;
@@ -597,9 +843,4 @@ void _handleSendPressed(String text) async {
     // Handle error, maybe show an error message in the chat
   }
 }
-Step 3: Remove Old Code
-You can now delete the askAiCoach method from N8nService.
-Remove any code that directly interacts with a Firebase/Firestore collection for chat messages. The new ChatApiService is the single source of truth.
-This approach ensures a responsive UI, a persistent chat history, and a clean separation of concerns.
-
-0 context items
+```
