@@ -282,13 +282,50 @@ class ApiService {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final response = await http.put(
-      Uri.parse('$_baseUrl/api/workouts/$workoutId/exercises/$exerciseIndex/sets'),
+      Uri.parse('$_baseUrl/api/progress/workout/$workoutId/exercises/$exerciseIndex/sets'),
       headers: await _getHeaders(),
       body: jsonEncode({'completedSets': completedSets, 'date': dateString}),
     );
 
     if (response.statusCode != 200) {
       throw Exception('Failed to update workout progress: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getWorkoutProgress(String date) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/progress/workout/$date'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true) {
+        return body['data'] as Map<String, dynamic>;
+      }
+    }
+    throw Exception('Failed to get workout progress: ${response.body}');
+  }
+
+  Future<void> completeAllWorkout(String date) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/progress/workout/$date/complete-all'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to complete all workout: ${response.body}');
+    }
+  }
+
+  Future<void> completeAllNutrition(String date) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/progress/nutrition/$date/complete-all'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to complete all nutrition: ${response.body}');
     }
   }
 

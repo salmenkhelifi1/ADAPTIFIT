@@ -1,6 +1,7 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/models/nutrition.dart';
 import 'package:adaptifit/src/providers/api_service_provider.dart';
+import 'package:adaptifit/src/providers/progress_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,23 +15,19 @@ class NutritionPlanScreen extends ConsumerStatefulWidget {
 }
 
 class _NutritionPlanScreenState extends ConsumerState<NutritionPlanScreen> {
-  late Map<String, bool> completedMeals;
 
   @override
   void initState() {
     super.initState();
-    completedMeals = {
-      for (var mealKey in widget.nutrition.meals.keys) mealKey: false
-    };
+    Future.microtask(() => ref.read(nutritionProgressProvider.notifier).loadProgress(widget.nutrition.meals.keys.toList()));
   }
 
   int get totalMeals => widget.nutrition.meals.length;
-  int get totalCompletedMeals =>
-      completedMeals.values.where((isCompleted) => isCompleted).length;
+  int get totalCompletedMeals => ref.watch(nutritionProgressProvider).values.where((isCompleted) => isCompleted).length;
 
   Future<void> _completeMeal(String mealKey, bool isCompleted) async {
     try {
-      final newCompletedMeals = completedMeals.entries
+      final newCompletedMeals = ref.read(nutritionProgressProvider).entries
           .where((entry) => entry.value)
           .map((entry) => entry.key)
           .toList();
@@ -52,8 +49,27 @@ class _NutritionPlanScreenState extends ConsumerState<NutritionPlanScreen> {
     }
   }
 
+  Future<void> _completeAllMeals() async {
+    try {
+      final date = DateTime.now();
+      final dateString = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      await ref.read(apiServiceProvider).completeAllNutrition(dateString);
+      if (mounted) {
+        ref.read(nutritionProgressProvider.notifier).completeAll();
+      }
+    } catch (e) {
+      debugPrint("Error completing all meals: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to complete all meals.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final completedMeals = ref.watch(nutritionProgressProvider);
     final nutrition = widget.nutrition;
     final meals = nutrition.meals;
 
@@ -96,6 +112,18 @@ class _NutritionPlanScreenState extends ConsumerState<NutritionPlanScreen> {
             ]),
             const SizedBox(height: 16),
             _buildProgressCard(),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _completeAllMeals,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              child: const Text('Complete All Meals', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
             const SizedBox(height: 16),
             const Text('Meals',
                 style: TextStyle(
@@ -206,14 +234,13 @@ class _NutritionPlanScreenState extends ConsumerState<NutritionPlanScreen> {
   }
 
   Widget _buildMealCheckbox(String mealKey) {
+    final completedMeals = ref.watch(nutritionProgressProvider);
     final isChecked = completedMeals[mealKey] ?? false;
     return InkWell(
       onTap: () {
-        setState(() {
-          final newIsChecked = !isChecked;
-          completedMeals[mealKey] = newIsChecked;
-          _completeMeal(mealKey, newIsChecked);
-        });
+        final newIsChecked = !isChecked;
+        ref.read(nutritionProgressProvider.notifier).updateProgress(mealKey, newIsChecked);
+        _completeMeal(mealKey, newIsChecked);
       },
       borderRadius: BorderRadius.circular(6),
       child: Container(

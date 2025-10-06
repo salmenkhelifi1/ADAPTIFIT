@@ -1,6 +1,7 @@
 import 'package:adaptifit/src/providers/calendar_provider.dart';
 import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:adaptifit/src/providers/plan_provider.dart';
+import 'package:adaptifit/src/providers/progress_provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,11 +24,10 @@ class PlanScreen extends ConsumerWidget {
   const PlanScreen({super.key});
 
   Future<void> _completeWorkout(BuildContext context, WidgetRef ref,
-      DateTime date, bool completed) async {
+      DateTime date) async {
     try {
-      await ref
-          .read(apiServiceProvider)
-          .completeWorkout(date, completed: completed);
+      final dateString = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      await ref.read(apiServiceProvider).completeAllWorkout(dateString);
       ref.refresh(todayCalendarEntryProvider);
     } catch (e) {
       debugPrint("Error completing workout: $e");
@@ -40,9 +40,10 @@ class PlanScreen extends ConsumerWidget {
   }
 
   Future<void> _completeNutrition(BuildContext context, WidgetRef ref,
-      DateTime date, String nutritionId) async {
+      DateTime date) async {
     try {
-      await ref.read(apiServiceProvider).completeNutrition(date, nutritionId);
+      final dateString = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      await ref.read(apiServiceProvider).completeAllNutrition(dateString);
       ref.refresh(todayCalendarEntryProvider);
     } catch (e) {
       debugPrint("Error completing nutrition: $e");
@@ -324,7 +325,11 @@ class PlanScreen extends ConsumerWidget {
 
   Widget _buildWorkoutCard(BuildContext context, Workout workout,
       CalendarEntry calendar, WidgetRef ref) {
-    final bool isCompleted = calendar.workoutCompleted;
+    final workoutProgress = ref.watch(workoutProgressProvider);
+    final totalSetSlots = workout.exercises.fold<int>(0, (acc, ex) => acc + (ex.sets));
+    final totalCompletedSlots = workoutProgress.fold<int>(0, (a, b) => a + b);
+    final bool isCompleted = totalCompletedSlots > 0 && totalCompletedSlots == totalSetSlots;
+
     const primaryGreen = Color(0xFF1EB955);
 
     return _buildStyledContainer(
@@ -365,6 +370,24 @@ class PlanScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Progress', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('${totalCompletedSlots}/${totalSetSlots} sets', style: const TextStyle(color: AppColors.subtitleGray)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: totalSetSlots == 0 ? 0.0 : totalCompletedSlots / totalSetSlots,
+              minHeight: 8,
+              backgroundColor: AppColors.lightGrey2,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+            ),
+          ),
+          const SizedBox(height: 16),
           GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -382,7 +405,7 @@ class PlanScreen extends ConsumerWidget {
               onPressed: isCompleted
                   ? null
                   : () => _completeWorkout(
-                      context, ref, calendar.date, !isCompleted),
+                      context, ref, calendar.date),
               style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,
@@ -412,8 +435,11 @@ class PlanScreen extends ConsumerWidget {
 
   Widget _buildNutritionCard(BuildContext context, Nutrition nutrition,
       CalendarEntry calendar, WidgetRef ref) {
-    final bool isCompleted =
-        calendar.completedNutritionIds.contains(nutrition.id);
+    final nutritionProgress = ref.watch(nutritionProgressProvider);
+    final totalMeals = nutrition.meals.length;
+    final totalCompletedMeals = nutritionProgress.values.where((isCompleted) => isCompleted).length;
+    final bool isCompleted = totalCompletedMeals > 0 && totalCompletedMeals == totalMeals;
+
     const primaryBlue = Color(0xFF3A7DFF);
     const primaryGreen = Color(0xFF1EB955);
 
@@ -447,6 +473,24 @@ class PlanScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Progress', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('${totalCompletedMeals}/${totalMeals} meals', style: const TextStyle(color: AppColors.subtitleGray)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: totalMeals == 0 ? 0.0 : totalCompletedMeals / totalMeals,
+              minHeight: 8,
+              backgroundColor: AppColors.lightGrey2,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+            ),
+          ),
+          const SizedBox(height: 16),
           GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -464,7 +508,7 @@ class PlanScreen extends ConsumerWidget {
               onPressed: isCompleted
                   ? null
                   : () => _completeNutrition(
-                      context, ref, calendar.date, nutrition.id),
+                      context, ref, calendar.date),
               style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,

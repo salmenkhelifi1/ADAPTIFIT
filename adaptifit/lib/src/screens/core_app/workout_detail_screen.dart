@@ -1,6 +1,7 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/models/workout.dart';
 import 'package:adaptifit/src/providers/api_service_provider.dart';
+import 'package:adaptifit/src/providers/progress_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,18 +15,16 @@ class WorkoutDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
-  // Track completed sets per exercise for the progress bar
-  late List<int> completedSets; // number of set checkboxes checked
 
   @override
   void initState() {
     super.initState();
-    completedSets = List<int>.filled(widget.workout.exercises.length, 0);
+    Future.microtask(() => ref.read(workoutProgressProvider.notifier).loadProgress(widget.workout.id, widget.workout.exercises.length));
   }
 
   int get totalSetSlots =>
       widget.workout.exercises.fold<int>(0, (acc, ex) => acc + (ex.sets));
-  int get totalCompletedSlots => completedSets.fold<int>(0, (a, b) => a + b);
+  int get totalCompletedSlots => ref.watch(workoutProgressProvider).fold<int>(0, (a, b) => a + b);
 
   Future<void> _updateProgress(int exerciseIndex, int sets) async {
     try {
@@ -43,6 +42,7 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final completedSets = ref.watch(workoutProgressProvider);
     final workout = widget.workout;
     final exercises = workout.exercises;
     final exercisesCount = exercises.length;
@@ -210,21 +210,23 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
   }
 
   Widget _buildSetCheckbox(int exerciseIndex, int slotIndex) {
+    final completedSets = ref.watch(workoutProgressProvider);
+    if (exerciseIndex >= completedSets.length) {
+      return const SizedBox.shrink();
+    }
     final isChecked = completedSets[exerciseIndex] > slotIndex;
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
       child: InkWell(
         onTap: () {
-          setState(() {
-            int newCompletedSets;
-            if (isChecked) {
-              newCompletedSets = slotIndex;
-            } else {
-              newCompletedSets = slotIndex + 1;
-            }
-            completedSets[exerciseIndex] = newCompletedSets;
-            _updateProgress(exerciseIndex, newCompletedSets);
-          });
+          int newCompletedSets;
+          if (isChecked) {
+            newCompletedSets = slotIndex;
+          } else {
+            newCompletedSets = slotIndex + 1;
+          }
+          ref.read(workoutProgressProvider.notifier).updateProgress(exerciseIndex, newCompletedSets);
+          _updateProgress(exerciseIndex, newCompletedSets);
         },
         borderRadius: BorderRadius.circular(6),
         child: Container(
