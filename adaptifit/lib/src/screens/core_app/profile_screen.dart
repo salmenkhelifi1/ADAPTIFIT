@@ -1,48 +1,32 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
+import 'package:adaptifit/src/providers/auth_provider.dart';
+import 'package:adaptifit/src/providers/user_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:adaptifit/src/models/user.dart';
 import 'package:adaptifit/src/screens/auth/change_password_screen.dart';
 import 'package:adaptifit/src/screens/auth/welcome_screen.dart';
-import 'package:adaptifit/src/services/api_service.dart';
 import 'package:adaptifit/src/screens/onboarding/onboarding_question_screen.dart';
-import 'package:adaptifit/src/context/onboarding_provider.dart';
 import 'package:adaptifit/src/screens/core_app/injury_adaptation_notes_screen.dart';
 import 'package:adaptifit/src/screens/core_app/badges_streaks_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  final ApiService _apiService = ApiService();
-  final _secureStorage = const FlutterSecureStorage();
-  late Future<User> _userFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _userFuture = _apiService.getMyProfile();
-  }
-
-  Future<void> _signOut() async {
-    await _secureStorage.delete(key: 'jwt_token');
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-        (Route<dynamic> route) => false,
-      );
-    }
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    await ref.read(authServiceProvider.notifier).signOut();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+      (Route<dynamic> route) => false,
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userValue = ref.watch(userProvider);
+
     return Scaffold(
       backgroundColor:
           AppColors.neutralGray, // Set background color for the whole screen
@@ -70,71 +54,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
           //
         ],
       ),
-      body: FutureBuilder<User>(
-        future: _userFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: Text('User profile not found.'));
-          }
-
-          final user = snapshot.data!;
-
-          return SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Column(
-              children: [
-                _buildProfileHeader(user),
-                const SizedBox(height: 24),
-                _buildAccountInfoCard(user),
-                const SizedBox(height: 24),
-                _buildNotesCard(),
-                const SizedBox(height: 24),
-                _buildBadgesCard(),
-                const SizedBox(height: 32),
-                _buildActionButton(
-                  icon: Icons.refresh,
-                  text: 'Rewrite Plan',
-                  isPrimary: true,
-                  onPressed: () {
-                    final onboardingProvider =
-                        Provider.of<OnboardingProvider>(context, listen: false);
-                    onboardingProvider.setAnswers(user.onboardingAnswers);
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const OnboardingQuestionScreen()));
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildActionButton(
-                  icon: Icons.lock_outline,
-                  text: 'Change Password',
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const ChangePasswordScreen()));
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildLogoutButton(),
-                const SizedBox(height: 24),
-                const Text('Adaptifit v2.1.0',
-                    style: TextStyle(color: Colors.grey, fontSize: 14)),
-                const SizedBox(height: 16),
-              ],
-            ),
-          );
-        },
+      body: userValue.when(
+        data: (user) => SingleChildScrollView(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Column(
+            children: [
+              _buildProfileHeader(user),
+              const SizedBox(height: 24),
+              _buildAccountInfoCard(user),
+              const SizedBox(height: 24),
+              _buildNotesCard(context),
+              const SizedBox(height: 24),
+              _buildBadgesCard(context),
+              const SizedBox(height: 32),
+              _buildActionButton(
+                icon: Icons.refresh,
+                text: 'Rewrite Plan',
+                isPrimary: true,
+                onPressed: () {
+                  final onboardingProviderNotifier = ref.read(onboardingProvider.notifier);
+                  onboardingProviderNotifier.setAnswers(user.onboardingAnswers);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              const OnboardingQuestionScreen()));
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildActionButton(
+                icon: Icons.lock_outline,
+                text: 'Change Password',
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              const ChangePasswordScreen()));
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildLogoutButton(context, ref),
+              const SizedBox(height: 24),
+              const Text('Adaptifit v2.1.0',
+                  style: TextStyle(color: Colors.grey, fontSize: 14)),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }
@@ -235,7 +205,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildNotesCard() {
+  Widget _buildNotesCard(BuildContext context) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -270,7 +240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Text(
               'Track any injuries, modifications, or special adaptations for your workouts',
               textAlign: TextAlign.center,
-              style:
+              style: 
                   TextStyle(color: AppColors.grey, fontSize: 15, height: 1.3),
             ),
           ],
@@ -279,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildBadgesCard() {
+  Widget _buildBadgesCard(BuildContext context) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -313,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Text(
               'Earn badges and maintain streaks as you progress through your fitness journey',
               textAlign: TextAlign.center,
-              style:
+              style: 
                   TextStyle(color: AppColors.grey, fontSize: 15, height: 1.3),
             ),
           ],
@@ -363,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(icon, color: color),
             const SizedBox(width: 12),
             Text(text,
-                style:
+                style: 
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -371,9 +341,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildLogoutButton() {
+  Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
     return TextButton(
-      onPressed: _signOut,
+      onPressed: () => _signOut(context, ref),
       style: TextButton.styleFrom(
         foregroundColor: AppColors.grey,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),

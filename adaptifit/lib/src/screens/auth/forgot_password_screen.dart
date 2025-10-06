@@ -1,18 +1,18 @@
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/screens/auth/password_reset_confirmation_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
-  final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
   @override
@@ -37,7 +37,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     try {
-      await _apiService.forgotPassword(
+      await ref.read(apiServiceProvider).forgotPassword(
         _emailController.text.trim(),
       );
 

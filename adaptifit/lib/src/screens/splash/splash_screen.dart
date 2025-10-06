@@ -1,6 +1,4 @@
-import 'package:adaptifit/src/services/auth_service.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/constants/app_strings.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';

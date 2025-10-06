@@ -1,50 +1,31 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/models/workout.dart';
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/plan_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:adaptifit/src/models/plan.dart';
+import 'package:adaptifit/src/providers/plan_provider.dart';
 
-class PlanDetailsScreen extends StatefulWidget {
+class PlanDetailsScreen extends ConsumerWidget {
   final Plan plan;
 
   const PlanDetailsScreen({super.key, required this.plan});
 
   @override
-  State<PlanDetailsScreen> createState() => _PlanDetailsScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final workoutsValue = ref.watch(workoutsForPlanProvider(plan.id));
 
-class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
-  final ApiService _apiService = ApiService();
-  late Future<List<Workout>> _workoutsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _workoutsFuture = _apiService.getWorkoutsForPlan(widget.plan.id);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.plan.planName),
+        title: Text(plan.planName),
         backgroundColor: AppColors.primaryGreen,
       ),
-      body: FutureBuilder<List<Workout>>(
-        future: _workoutsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+      body: workoutsValue.when(
+        data: (workouts) {
+          if (workouts.isEmpty) {
             return const Center(
                 child: Text('No workouts found for this plan.'));
           }
-
-          final workouts = snapshot.data!;
 
           return ListView.builder(
             itemCount: workouts.length,
@@ -85,6 +66,8 @@ class _PlanDetailsScreenState extends State<PlanDetailsScreen> {
             },
           );
         },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => Center(child: Text('Error: $error')),
       ),
     );
   }

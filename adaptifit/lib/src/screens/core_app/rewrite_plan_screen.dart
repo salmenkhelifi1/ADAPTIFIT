@@ -1,17 +1,17 @@
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/utils/message_utils.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'workout_overview_screen.dart';
 
-class RewritePlanScreen extends StatefulWidget {
+class RewritePlanScreen extends ConsumerStatefulWidget {
   const RewritePlanScreen({super.key});
 
   @override
-  State<RewritePlanScreen> createState() => _RewritePlanScreenState();
+  ConsumerState<RewritePlanScreen> createState() => _RewritePlanScreenState();
 }
 
-class _RewritePlanScreenState extends State<RewritePlanScreen> {
-  final ApiService _apiService = ApiService();
+class _RewritePlanScreenState extends ConsumerState<RewritePlanScreen> {
   bool _isRegenerating = false;
 
   Future<void> _regeneratePlan() async {
@@ -20,7 +20,7 @@ class _RewritePlanScreenState extends State<RewritePlanScreen> {
     });
 
     try {
-      await _apiService.regeneratePlan();
+      await ref.read(apiServiceProvider).regeneratePlan();
       if (mounted) {
         showSnackBarMessage(
           context,

@@ -1,10 +1,11 @@
 import 'package:adaptifit/src/models/nutrition.dart';
 import 'package:adaptifit/src/models/workout.dart';
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/plan_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 
-class WorkoutOverviewScreen extends StatefulWidget {
+class WorkoutOverviewScreen extends ConsumerWidget {
   final Workout workout;
 
   const WorkoutOverviewScreen({
@@ -13,21 +14,9 @@ class WorkoutOverviewScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _WorkoutOverviewScreenState createState() => _WorkoutOverviewScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nutritionValue = ref.watch(planNutritionProvider(workout.planId));
 
-class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
-  final ApiService _apiService = ApiService();
-  late Future<Nutrition?> _nutritionFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _nutritionFuture = _apiService.getNutritionForPlan(widget.workout.planId);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.screenBackground,
       body: SafeArea(
@@ -38,15 +27,20 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 16),
-                _buildHeader(),
+                _buildHeader(context, workout),
                 const SizedBox(height: 24),
                 _buildInfoBanner(),
                 const SizedBox(height: 16),
-                _buildWorkoutCard(widget.workout),
+                _buildWorkoutCard(workout),
                 const SizedBox(height: 16),
                 _buildNutritionHeader(),
                 const SizedBox(height: 16),
-                _buildNutritionDetailsCard(),
+                nutritionValue.when(
+                  data: (nutrition) => _buildNutritionDetailsCard(nutrition),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) => Center(child: Text('Error: $error')),
+                ),
                 const SizedBox(height: 16),
                 _buildDailySummaryCard(),
                 const SizedBox(height: 24),
@@ -77,7 +71,7 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context, Workout workout) {
     return Row(
       children: [
         IconButton(
@@ -89,7 +83,7 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.workout.day,
+              workout.day,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -238,66 +232,59 @@ class _WorkoutOverviewScreenState extends State<WorkoutOverviewScreen> {
     );
   }
 
-  Widget _buildNutritionDetailsCard() {
-    return FutureBuilder<Nutrition?>(
-        future: _nutritionFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('Nutrition plan not found.'));
-          }
+  Widget _buildNutritionDetailsCard(Nutrition? nutrition) {
+    if (nutrition == null) {
+      return const Center(child: Text('Nutrition plan not found.'));
+    }
 
-          final nutrition = snapshot.data!;
+    final breakfast = nutrition.meals['breakfast'];
+    final lunch = nutrition.meals['lunch'];
+    final dinner = nutrition.meals['dinner'];
+    final snacks = nutrition.meals['snacks'];
 
-          return _buildStyledContainer(
-            child: Column(
-              children: [
-                _buildMealCard(
-                  icon: '🍽️',
-                  title: 'Breakfast',
-                  mealName: nutrition.meals['breakfast']!.name,
-                  items: nutrition.meals['breakfast']!.items,
-                  calories: nutrition.meals['breakfast']!.calories,
-                  protein: nutrition.meals['breakfast']!.protein,
-                ),
-                const Divider(height: 32),
-                _buildMealCard(
-                  icon: '🥗',
-                  title: 'Lunch',
-                  mealName: nutrition.meals['lunch']!.name,
-                  items: nutrition.meals['lunch']!.items,
-                  calories: nutrition.meals['lunch']!.calories,
-                  protein: nutrition.meals['lunch']!.protein,
-                ),
-                const Divider(height: 32),
-                _buildMealCard(
-                  icon: '🐟',
-                  title: 'Dinner',
-                  mealName: nutrition.meals['dinner']!.name,
-                  items: nutrition.meals['dinner']!.items,
-                  calories: nutrition.meals['dinner']!.calories,
-                  protein: nutrition.meals['dinner']!.protein,
-                ),
-                const Divider(height: 32),
-                _buildMealCard(
-                  icon: '🥜',
-                  title: 'Snacks',
-                  mealName: nutrition.meals['snacks']!.name,
-                  items: nutrition.meals['snacks']!.items,
-                  calories: nutrition.meals['snacks']!.calories,
-                  protein: nutrition.meals['snacks']!.protein,
-                ),
-                const Divider(height: 32),
-                _buildHydrationCard(nutrition.dailyWater),
-              ],
-            ),
-          );
-        });
+    return _buildStyledContainer(
+      child: Column(
+        children: [
+          _buildMealCard(
+            icon: '🍽️',
+            title: 'Breakfast',
+            mealName: breakfast?.name ?? 'Breakfast',
+            items: breakfast?.items ?? const [],
+            calories: breakfast?.calories ?? 0,
+            protein: breakfast?.protein ?? 0,
+          ),
+          const Divider(height: 32),
+          _buildMealCard(
+            icon: '🥗',
+            title: 'Lunch',
+            mealName: lunch?.name ?? 'Lunch',
+            items: lunch?.items ?? const [],
+            calories: lunch?.calories ?? 0,
+            protein: lunch?.protein ?? 0,
+          ),
+          const Divider(height: 32),
+          _buildMealCard(
+            icon: '🐟',
+            title: 'Dinner',
+            mealName: dinner?.name ?? 'Dinner',
+            items: dinner?.items ?? const [],
+            calories: dinner?.calories ?? 0,
+            protein: dinner?.protein ?? 0,
+          ),
+          const Divider(height: 32),
+          _buildMealCard(
+            icon: '🥜',
+            title: 'Snacks',
+            mealName: snacks?.name ?? 'Snacks',
+            items: snacks?.items ?? const [],
+            calories: snacks?.calories ?? 0,
+            protein: snacks?.protein ?? 0,
+          ),
+          const Divider(height: 32),
+          _buildHydrationCard(nutrition.dailyWater),
+        ],
+      ),
+    );
   }
 
   Widget _buildMealCard({

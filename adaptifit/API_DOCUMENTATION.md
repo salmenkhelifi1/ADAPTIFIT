@@ -386,6 +386,26 @@ Returns an array of workout objects.
 
 ---
 
+### `GET /api/workouts/:id`
+
+Gets a workout by its ID.
+
+**Authentication:** JWT Token required.
+
+**URL Parameters:**
+
+*   `id`: The ID of the workout.
+
+**Response:**
+
+Returns the workout object.
+
+```json
+{ /* Workout object */ }
+```
+
+---
+
 ### `POST /api/workouts/:workoutId/complete`
 
 Marks a workout as complete and updates user progress (completed workouts, current streak, longest streak, last workout date, and badges).
@@ -496,6 +516,26 @@ Returns the nutrition plan object.
 { /* Nutrition plan object */ }
 ```
 
+---
+
+### `GET /api/nutrition/:id`
+
+Gets a nutrition plan by its ID.
+
+**Authentication:** JWT Token required.
+
+**URL Parameters:**
+
+*   `id`: The ID of the nutrition plan.
+
+**Response:**
+
+Returns the nutrition plan object.
+
+```json
+{ /* Nutrition plan object */ }
+```
+
 -----
 
 ## Calendar Routes (`routes/calendar.js`)
@@ -575,7 +615,7 @@ Returns the calendar entry object for the specified date.
 
 ### `PUT /api/calendar/:date`
 
-Marks a calendar entry for a specific date as complete or incomplete.
+Marks a calendar entry for a specific date as complete or incomplete, and updates the list of completed meals.
 
 **Authentication:** JWT Token required.
 
@@ -587,9 +627,12 @@ Marks a calendar entry for a specific date as complete or incomplete.
 
 ```json
 {
-  "completed": true
+  "completed": true,
+  "completedMeals": ["breakfast", "lunch"]
 }
 ```
+
+**Note:** When updating `completedMeals`, the `completed` field is also required.
 
 **Response:**
 
@@ -601,6 +644,93 @@ Returns the updated calendar entry object.
   "data": { /* Updated calendar entry object */ }
 }
 ```
+
+---
+
+### Tracking Endpoints (Workout and Nutrition Progress)
+
+These endpoints enable the in-app tracking system (checkboxes for workout sets, mark-done for meals, and overall day/workout completion). All require JWT auth.
+
+**Note on completing meals:** To mark a single meal as complete, you should use the `PUT /api/calendar/:date` endpoint and update the `completedMeals` array.
+
+#### `PUT /api/calendar/:date/workout/complete`
+
+- Marks the workout for a given date as completed or uncompleted.
+- Body:
+
+```json
+{ "workoutCompleted": true }
+```
+
+**Response:**
+
+```json
+{ "success": true, "data": { /* CalendarEntry */ } }
+```
+
+#### `PUT /api/calendar/:date/nutrition/:nutritionId/complete`
+
+- Toggles completion for a specific nutrition plan assigned on the given date.
+
+**Request Body:**
+
+```json
+{ "completed": true }
+```
+
+**Response:**
+
+```json
+{ "success": true, "data": { /* CalendarEntry */ } }
+```
+
+#### `PUT /api/calendar/:date/day/complete`
+
+- Marks the entire day as completed/uncompleted (optional, if you want an overall daily streak metric).
+
+Body:
+
+```json
+{ "completed": true }
+```
+
+**Response:**
+
+```json
+{ "success": true, "data": { /* CalendarEntry */ } }
+```
+
+#### `PUT /api/workouts/:workoutId/exercises/:exerciseIndex/sets`
+
+- Records per-exercise set progress for the active workout. This powers the set-checkboxes UI.
+- Body:
+
+```json
+{
+  "completedSets": 2,
+  "date": "2024-12-03"
+}
+```
+
+Notes:
+- `exerciseIndex` is the 0-based index in the workout's `exercises` array.
+- `date` should be in 'YYYY-MM-DD' format.
+- Backend should store progress per user per date, e.g., in a `workoutProgress` sub-document keyed by date/workoutId.
+
+Example Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "workoutId": "abc123",
+    "date": "2024-12-03",
+    "exercises": [{ "index": 0, "completedSets": 2 }]
+  }
+}
+```
+
+If you don't have this route yet, add a small collection/table like `workout_progress` with: `userId`, `date`, `workoutId`, `exercises: [{index, completedSets}]`.
 
 -----
 

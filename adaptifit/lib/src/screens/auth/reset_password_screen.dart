@@ -1,23 +1,23 @@
 
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/screens/auth/sign_in_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ResetPasswordScreen extends StatefulWidget {
+class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String token;
 
   const ResetPasswordScreen({super.key, required this.token});
 
   @override
-  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _newPasswordController = TextEditingController();
   final _confirmNewPasswordController = TextEditingController();
-  final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
   @override
@@ -37,7 +37,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
 
     try {
-      await _apiService.resetPassword(
+      await ref.read(apiServiceProvider).resetPassword(
         widget.token,
         _newPasswordController.text,
       );

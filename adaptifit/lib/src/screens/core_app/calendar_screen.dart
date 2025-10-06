@@ -1,35 +1,34 @@
 import 'package:adaptifit/src/models/calendar_entry.dart';
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/calendar_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:adaptifit/src/screens/core_app/daily_plan_detail_screen.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 
-class CalendarScreen extends StatefulWidget {
+class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
-  final ApiService _apiService = ApiService();
-  late Future<List<CalendarEntry>> _calendarEntriesFuture;
+class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<String, CalendarEntry> _calendarData = {};
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _calendarEntriesFuture = _apiService.getCalendarEntries();
   }
 
   @override
   Widget build(BuildContext context) {
+    final calendarEntriesValue = ref.watch(calendarEntriesProvider);
+
     return Scaffold(
       backgroundColor: AppColors.screenBackground,
       appBar: AppBar(
@@ -47,26 +46,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         centerTitle: true,
       ),
-      body: FutureBuilder<List<CalendarEntry>>(
-        future: _calendarEntriesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
-
-          if (snapshot.hasData) {
-            _calendarData = {
-              for (var entry in snapshot.data!)
-                DateFormat('yyyy-MM-dd').format(entry.date): entry
-            };
-            if (kDebugMode) {
-              print(
-                  "[Calendar Debug] Loaded Data Keys: ${_calendarData.keys.toList()}");
-            }
+      body: calendarEntriesValue.when(
+        data: (entries) {
+          final calendarData = {
+            for (var entry in entries)
+              DateFormat('yyyy-MM-dd').format(entry.date): entry
+          };
+          if (kDebugMode) {
+            print(
+                "[Calendar Debug] Loaded Data Keys: ${calendarData.keys.toList()}");
           }
           return Padding(
             padding: const EdgeInsets.all(20.0),
@@ -138,7 +126,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       markerBuilder: (context, date, events) {
                         final dateString =
                             DateFormat('yyyy-MM-dd').format(date);
-                        final calendarDay = _calendarData[dateString];
+                        final calendarDay = calendarData[dateString];
 
                         if (kDebugMode) {
                           if (calendarDay != null) {
@@ -167,6 +155,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           );
         },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) =>
+            Center(child: Text("Error: $error")),
       ),
     );
   }

@@ -1,18 +1,21 @@
 import 'package:adaptifit/src/models/user.dart';
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService extends ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  final Ref _ref;
   final _secureStorage = const FlutterSecureStorage();
   User? _user;
+
+  AuthService(this._ref);
 
   User? get user => _user;
 
   Future<void> tryAutoLogin() async {
     try {
-      final user = await _apiService.getMyProfile();
+      final user = await _ref.read(apiServiceProvider).getMyProfile();
       _user = user;
       notifyListeners();
     } catch (e) {
@@ -26,7 +29,7 @@ class AuthService extends ChangeNotifier {
     required String firstName,
   }) async {
     try {
-      await _apiService.register(firstName, email, password);
+      await _ref.read(apiServiceProvider).register(firstName, email, password);
       await _loginAndSetUser(email, password);
     } catch (e) {
       debugPrint(e.toString());
@@ -47,15 +50,15 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _loginAndSetUser(String email, String password) async {
-    await _apiService.login(email, password);
-    _user = await _apiService.getMyProfile();
+    await _ref.read(apiServiceProvider).login(email, password);
+    _user = await _ref.read(apiServiceProvider).getMyProfile();
     notifyListeners();
   }
 
   Future<void> changePassword(
       {required String currentPassword, required String newPassword}) async {
     try {
-      await _apiService.changePassword(currentPassword, newPassword);
+      await _ref.read(apiServiceProvider).changePassword(currentPassword, newPassword);
     } catch (e) {
       debugPrint(e.toString());
       rethrow;

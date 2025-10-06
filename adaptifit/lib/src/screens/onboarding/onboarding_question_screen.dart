@@ -2,10 +2,10 @@
 
 import 'package:adaptifit/src/screens/onboarding/summary_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:adaptifit/src/constants/app_colors.dart';
-import 'package:adaptifit/src/context/onboarding_provider.dart';
+import 'package:adaptifit/src/providers/auth_provider.dart';
 
 // UPDATED: Added multiChoice type
 enum QuestionType {
@@ -35,15 +35,16 @@ class OnboardingQuestion {
   });
 }
 
-class OnboardingQuestionScreen extends StatefulWidget {
+class OnboardingQuestionScreen extends ConsumerStatefulWidget {
   const OnboardingQuestionScreen({super.key});
 
   @override
-  State<OnboardingQuestionScreen> createState() =>
+  ConsumerState<OnboardingQuestionScreen> createState() =>
       _OnboardingQuestionScreenState();
 }
 
-class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
+class _OnboardingQuestionScreenState
+    extends ConsumerState<OnboardingQuestionScreen> {
   int _currentQuestionIndex = 0;
 
   // UPDATED: First question changed to multiChoice to match screenshot
@@ -200,7 +201,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   void _nextQuestion() {
     final currentQuestion = _questions[_currentQuestionIndex];
     if (currentQuestion.answerKey == 'gymAccess') {
-      final provider = Provider.of<OnboardingProvider>(context, listen: false);
+      final provider = ref.read(onboardingProvider);
       final answer = provider.answers['gymAccess'];
       if (answer == 'Gym') {
         final splitIndex =
@@ -227,7 +228,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   void _previousQuestion() {
     final currentQuestion = _questions[_currentQuestionIndex];
     if (currentQuestion.answerKey == 'workoutSplit') {
-      final provider = Provider.of<OnboardingProvider>(context, listen: false);
+      final provider = ref.read(onboardingProvider);
       final answer = provider.answers['gymAccess'];
       if (answer == 'Gym') {
         final gymAccessIndex =
@@ -251,13 +252,12 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   }
 
   void _updateProviderAnswer(String key, dynamic value) {
-    Provider.of<OnboardingProvider>(context, listen: false)
-        .updateAnswer(key, value);
+    ref.read(onboardingProvider).updateAnswer(key, value);
     setState(() {});
   }
 
   void _loadAnswerForCurrentQuestion() {
-    final provider = Provider.of<OnboardingProvider>(context, listen: false);
+    final provider = ref.read(onboardingProvider);
     final question = _questions[_currentQuestionIndex];
     final answer = provider.answers[question.answerKey];
 
@@ -290,7 +290,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   @override
   Widget build(BuildContext context) {
     final currentQuestion = _questions[_currentQuestionIndex];
-    final provider = Provider.of<OnboardingProvider>(context);
+    final provider = ref.watch(onboardingProvider);
 
     bool isNextEnabled() {
       final answer = provider.answers[currentQuestion.answerKey];
@@ -326,8 +326,8 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
+                    topLeft: Radius.circular(36),
+                    topRight: Radius.circular(36),
                   ),
                 ),
                 child: Column(
@@ -366,11 +366,11 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                       child: ElevatedButton(
                         onPressed: isNextEnabled() ? _nextQuestion : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
+                          backgroundColor: AppColors.lightGrey2,
                           disabledBackgroundColor: AppColors.lightGrey2,
                           minimumSize: const Size(double.infinity, 56),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                           elevation: 0,
                         ),
@@ -381,9 +381,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isNextEnabled()
-                                ? AppColors.white
-                                : AppColors.subtitleGray,
+                            color: AppColors.darkText,
                           ),
                         ),
                       ),
@@ -399,40 +397,58 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      color: AppColors.primaryGreen,
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Back button is now part of the content flow, not a floating AppBar button
-          if (_currentQuestionIndex > 0)
-            GestureDetector(
-              onTap: _previousQuestion,
-              child:
-                  const Icon(Icons.arrow_back, color: Colors.white, size: 28),
-            )
-          else // Placeholder to keep layout consistent on the first question
-            const SizedBox(height: 28),
-          const SizedBox(height: 20),
-          const Text(
-            "Let's Begin",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
+    if (_currentQuestionIndex == 0) {
+      // First screen: green hero header per Figma
+      return Container(
+        color: AppColors.primaryGreen,
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 28),
+            SizedBox(height: 20),
+            Text(
+              "Let's Begin",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Adaptifit creates a personalized fitness and\nnutrition plan just for you",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Subsequent screens: minimal header with back in grey circle
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: GestureDetector(
+            onTap: _previousQuestion,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.neutralGray.withOpacity(0.6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_back, color: AppColors.darkText),
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            "Adaptifit creates a personalized fitness and\nnutrition plan just for you",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -455,7 +471,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   }
 
   Widget _buildMultiChoiceList(OnboardingQuestion question) {
-    final provider = Provider.of<OnboardingProvider>(context);
+    final provider = ref.watch(onboardingProvider);
     // Ensure the answer is a list, defaulting to an empty one if null or wrong type
     final selectedOptions =
         (provider.answers[question.answerKey] as List?)?.cast<String>() ?? [];
@@ -526,7 +542,7 @@ class _OnboardingQuestionScreenState extends State<OnboardingQuestionScreen> {
   }
 
   Widget _buildSingleChoiceList(OnboardingQuestion question) {
-    final provider = Provider.of<OnboardingProvider>(context);
+    final provider = ref.watch(onboardingProvider);
     final selectedOption = provider.answers[question.answerKey];
 
     return Column(

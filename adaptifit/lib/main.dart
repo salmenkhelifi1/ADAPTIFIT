@@ -1,7 +1,7 @@
 import 'package:adaptifit/src/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:adaptifit/src/constants/app_strings.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
@@ -21,12 +21,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => OnboardingProvider()),
-        ChangeNotifierProvider(create: (context) => AuthService()),
-      ],
-      child: const MyApp(),
+    const ProviderScope(
+      child: MyApp(),
     ),
   );
 }

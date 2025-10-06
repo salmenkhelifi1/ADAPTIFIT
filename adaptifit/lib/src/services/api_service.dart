@@ -154,6 +154,19 @@ class ApiService {
     }
   }
 
+  Future<List<Nutrition>> getNutritionsForPlan(String planId) async {
+    await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
+    return [ 
+      Nutrition(
+        id: 'mock_id',
+        name: 'Mock Nutrition',
+        calories: 2000,
+        meals: {},
+        dailyWater: '2L',
+      )
+    ];
+  }
+
   Future<Nutrition> getNutritionForPlan(String planId) async {
     final response = await http.get(
       Uri.parse('$_baseUrl/api/nutrition/plan/$planId'),
@@ -169,7 +182,7 @@ class ApiService {
 
   Future<Nutrition> getNutritionById(String nutritionId) async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/api/nutrition/$nutritionId'),
+      Uri.parse('$_baseUrl/api/nutrition/${nutritionId.trim()}'),
       headers: await _getHeaders(),
     );
 
@@ -216,19 +229,20 @@ class ApiService {
     }
   }
 
-  Future<CalendarEntry> completeDay(DateTime date, {required bool completed}) async {
+  Future<CalendarEntry> updateCalendarEntry(
+      DateTime date, Map<String, dynamic> data) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final response = await http.put(
-      Uri.parse('$_baseUrl/api/calendar/$dateString/day/complete'),
+      Uri.parse('$_baseUrl/api/calendar/$dateString'),
       headers: await _getHeaders(),
-      body: jsonEncode({'completed': completed}),
+      body: jsonEncode(data),
     );
 
     if (response.statusCode == 200) {
-      return CalendarEntry.fromJson(jsonDecode(response.body));
+      return CalendarEntry.fromJson(jsonDecode(response.body)['data']);
     } else {
-      throw Exception('Failed to complete day: ${response.body}');
+      throw Exception('Failed to update calendar entry: ${response.body}');
     }
   }
 
@@ -242,7 +256,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      return CalendarEntry.fromJson(jsonDecode(response.body));
+      return CalendarEntry.fromJson(jsonDecode(response.body)['data']);
     } else {
       throw Exception('Failed to complete workout: ${response.body}');
     }
@@ -254,14 +268,31 @@ class ApiService {
     final response = await http.put(
       Uri.parse('$_baseUrl/api/calendar/$dateString/nutrition/$nutritionId/complete'),
       headers: await _getHeaders(),
+      body: jsonEncode({'completed': true}),
     );
 
     if (response.statusCode == 200) {
-      return CalendarEntry.fromJson(jsonDecode(response.body));
+      return CalendarEntry.fromJson(jsonDecode(response.body)['data']);
     } else {
       throw Exception('Failed to complete nutrition: ${response.body}');
     }
   }
+
+  Future<void> updateWorkoutSetProgress(String workoutId, int exerciseIndex, int completedSets, DateTime date) async {
+    final dateString =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/workouts/$workoutId/exercises/$exerciseIndex/sets'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'completedSets': completedSets, 'date': dateString}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update workout progress: ${response.body}');
+    }
+  }
+
+
 
   Future<List<CalendarEntry>> getCalendarEntries() async {
     final response = await http.get(

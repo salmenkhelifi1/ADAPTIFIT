@@ -1,22 +1,22 @@
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/utils/message_utils.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:adaptifit/src/constants/app_colors.dart';
 
-class ChangePasswordScreen extends StatefulWidget {
+class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
 
   @override
-  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  ConsumerState<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
 
-class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmNewPasswordController = TextEditingController();
-  final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
   @override
@@ -37,7 +37,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     });
 
     try {
-      await _apiService.changePassword(
+      await ref.read(apiServiceProvider).changePassword(
         _currentPasswordController.text,
         _newPasswordController.text,
       );

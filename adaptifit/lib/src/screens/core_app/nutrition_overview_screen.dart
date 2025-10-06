@@ -1,65 +1,41 @@
 import 'package:adaptifit/src/models/nutrition.dart';
-import 'package:adaptifit/src/models/workout.dart';
-import 'package:adaptifit/src/services/api_service.dart';
+import 'package:adaptifit/src/providers/plan_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 
-class NutritionOverviewScreen extends StatefulWidget {
-  final String nutritionId;
+class NutritionOverviewScreen extends ConsumerWidget {
+  final String planId;
 
-  const NutritionOverviewScreen({Key? key, required this.nutritionId})
+  const NutritionOverviewScreen({Key? key, required this.planId})
       : super(key: key);
 
   @override
-  _NutritionOverviewScreenState createState() =>
-      _NutritionOverviewScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nutritionValue = ref.watch(planNutritionProvider(planId));
 
-class _NutritionOverviewScreenState extends State<NutritionOverviewScreen> {
-  final ApiService _apiService = ApiService();
-  late Future<Nutrition> _nutritionFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _nutritionFuture = _apiService.getNutritionById(widget.nutritionId);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.screenBackground,
       appBar: AppBar(
         title: const Text('Nutrition Overview'),
       ),
-      body: FutureBuilder<Nutrition>(
-        future: _nutritionFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: Text('Nutrition plan not found.'));
-          }
-
-          final nutrition = snapshot.data!;
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
-                _buildNutritionHeader(nutrition),
-                const SizedBox(height: 16),
-                _buildNutritionDetailsCard(nutrition),
-                const SizedBox(height: 16),
-                _buildDailySummaryCard(null, nutrition),
-              ],
-            ),
-          );
-        },
+      body: nutritionValue.when(
+        data: (nutrition) => nutrition == null
+            ? const Center(child: Text('Nutrition plan not found'))
+            : SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              _buildNutritionHeader(nutrition),
+              const SizedBox(height: 16),
+              _buildNutritionDetailsCard(nutrition),
+              const SizedBox(height: 16),
+              _buildDailySummaryCard(nutrition),
+            ],
+          ),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => Center(child: Text("Error: $error")),
       ),
     );
   }
@@ -255,7 +231,7 @@ class _NutritionOverviewScreenState extends State<NutritionOverviewScreen> {
     );
   }
 
-  Widget _buildDailySummaryCard(Workout? workout, Nutrition? nutrition) {
+  Widget _buildDailySummaryCard(Nutrition? nutrition) {
     int totalCalories = 0;
     int totalProtein = 0;
     if (nutrition != null) {
@@ -299,7 +275,7 @@ class _NutritionOverviewScreenState extends State<NutritionOverviewScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildStatItem(workout?.duration ?? '0 minutes', 'Workout Duration')),
+              Expanded(child: _buildStatItem('0 minutes', 'Workout Duration')),
               const SizedBox(width: 12),
               Expanded(child: _buildStatItem(nutrition?.dailyWater ?? '0L', 'Hydration Goal')),
             ],

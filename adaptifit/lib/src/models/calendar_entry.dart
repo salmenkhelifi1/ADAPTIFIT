@@ -8,6 +8,7 @@ class CalendarEntry {
   final bool completed;
   final bool workoutCompleted;
   final List<String> completedNutritionIds;
+  final List<String> completedMeals;
 
   CalendarEntry({
     required this.id,
@@ -19,6 +20,7 @@ class CalendarEntry {
     required this.completed,
     required this.workoutCompleted,
     required this.completedNutritionIds,
+    required this.completedMeals,
   });
 
   factory CalendarEntry.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class CalendarEntry {
       completed: json['completed'] ?? false,
       workoutCompleted: json['workoutCompleted'] ?? false,
       completedNutritionIds: List<String>.from(json['completedNutritionIds'] ?? []),
+      completedMeals: List<String>.from(json['completedMeals'] ?? []),
     );
   }
 }

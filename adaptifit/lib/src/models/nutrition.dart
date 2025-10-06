@@ -1,15 +1,28 @@
-class Macros {
-  final String carbs;
-  final String fats;
-  final String protein;
 
-  Macros({required this.carbs, required this.fats, required this.protein});
+class Nutrition {
+  final String id;
+  final String name;
+  final int calories;
+  final Map<String, Meal> meals;
+  final String dailyWater;
 
-  factory Macros.fromJson(Map<String, dynamic> json) {
-    return Macros(
-      carbs: json['carbs'] ?? '',
-      fats: json['fats'] ?? '',
-      protein: json['protein'] ?? '',
+  Nutrition({
+    required this.id,
+    required this.name,
+    required this.calories,
+    required this.meals,
+    required this.dailyWater,
+  });
+
+  factory Nutrition.fromJson(Map<String, dynamic> json) {
+    return Nutrition(
+      id: json['_id'] ?? '',
+      name: json['name'] ?? 'Unnamed Nutrition',
+      calories: json['calories'] ?? 0,
+      meals: (json['meals'] as Map<String, dynamic>).map(
+        (key, value) => MapEntry(key, Meal.fromJson(value)),
+      ),
+      dailyWater: json['dailyWater'] ?? '0L',
     );
   }
 }
@@ -29,45 +42,10 @@ class Meal {
 
   factory Meal.fromJson(Map<String, dynamic> json) {
     return Meal(
-      name: json['name'] ?? '',
+      name: json['name'] ?? 'Unnamed Meal',
       items: List<String>.from(json['items'] ?? []),
       calories: json['calories'] ?? 0,
       protein: json['protein'] ?? 0,
-    );
-  }
-}
-
-class Nutrition {
-  final String id;
-  final String planId;
-  final String name;
-  final int dailyCalories;
-  final String dailyWater;
-  final Macros macros;
-  final Map<String, Meal> meals;
-
-  Nutrition({
-    required this.id,
-    required this.planId,
-    required this.name,
-    required this.dailyCalories,
-    required this.dailyWater,
-    required this.macros,
-    required this.meals,
-  });
-
-  factory Nutrition.fromJson(Map<String, dynamic> json) {
-    var mealsMap = json['meals'] as Map<String, dynamic>? ?? {};
-    Map<String, Meal> meals = mealsMap.map((key, value) => MapEntry(key, Meal.fromJson(value)));
-
-    return Nutrition(
-      id: json['_id'] ?? '',
-      planId: json['planId'] ?? '',
-      name: json['name'] ?? '',
-      dailyCalories: json['dailyCalories'] ?? 0,
-      dailyWater: json['dailyWater'] ?? '',
-      macros: json['macros'] != null ? Macros.fromJson(json['macros']) : Macros(carbs: '', fats: '', protein: ''),
-      meals: meals,
     );
   }
 }

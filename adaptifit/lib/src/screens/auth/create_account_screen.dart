@@ -1,22 +1,22 @@
+import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
-import 'package:adaptifit/src/services/api_service.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'sign_in_screen.dart';
 
-class CreateAccountScreen extends StatefulWidget {
+class CreateAccountScreen extends ConsumerStatefulWidget {
   const CreateAccountScreen({super.key});
 
   @override
-  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
+  ConsumerState<CreateAccountScreen> createState() => _CreateAccountScreenState();
 }
 
-class _CreateAccountScreenState extends State<CreateAccountScreen> {
+class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
   Future<void> _createAccount() async {
@@ -29,7 +29,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     });
 
     try {
-      await _apiService.register(
+      await ref.read(apiServiceProvider).register(
         _firstNameController.text.trim(),
         _emailController.text.trim(),
         _passwordController.text.trim(),

@@ -1,21 +1,21 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
+import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
-import 'package:adaptifit/src/services/api_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:adaptifit/src/screens/auth/create_account_screen.dart';
 import 'package:adaptifit/src/screens/auth/forgot_password_screen.dart';
 
-class SignInScreen extends StatefulWidget {
+class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  ConsumerState<SignInScreen> createState() => _SignInScreenState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
+class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
   @override
@@ -31,7 +31,7 @@ class _SignInScreenState extends State<SignInScreen> {
     });
 
     try {
-      await _apiService.login(
+      await ref.read(apiServiceProvider).login(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
