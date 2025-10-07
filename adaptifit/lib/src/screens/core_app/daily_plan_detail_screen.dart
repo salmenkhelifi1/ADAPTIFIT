@@ -55,7 +55,7 @@ class DailyPlanDetailScreen extends ConsumerWidget {
           }
 
           final workoutValue = calendarDay.workoutId.isNotEmpty
-              ? ref.watch(workoutsForPlanProvider(calendarDay.planId))
+              ? ref.watch(planWorkoutsProvider(calendarDay.planId))
               : null;
           final nutritionValue = calendarDay.nutritionIds.isNotEmpty
               ? ref.watch(planNutritionProvider(calendarDay.planId))

@@ -22,7 +22,7 @@ final plansProvider = FutureProvider<List<Plan>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PlansRef = FutureProviderRef<List<Plan>>;
-String _$planWorkoutsHash() => r'0111cf97022c09a962ed6694bcecb61909a6c57f';
+String _$planWorkoutsHash() => r'e3d715055899eaf74a99503d5a8c3e76dfcc51b7';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -88,7 +88,7 @@ class PlanWorkoutsFamily extends Family<AsyncValue<List<Workout>>> {
 }
 
 /// See also [planWorkouts].
-class PlanWorkoutsProvider extends FutureProvider<List<Workout>> {
+class PlanWorkoutsProvider extends AutoDisposeFutureProvider<List<Workout>> {
   /// See also [planWorkouts].
   PlanWorkoutsProvider(
     String planId,
@@ -140,7 +140,7 @@ class PlanWorkoutsProvider extends FutureProvider<List<Workout>> {
   }
 
   @override
-  FutureProviderElement<List<Workout>> createElement() {
+  AutoDisposeFutureProviderElement<List<Workout>> createElement() {
     return _PlanWorkoutsProviderElement(this);
   }
 
@@ -160,12 +160,13 @@ class PlanWorkoutsProvider extends FutureProvider<List<Workout>> {
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin PlanWorkoutsRef on FutureProviderRef<List<Workout>> {
+mixin PlanWorkoutsRef on AutoDisposeFutureProviderRef<List<Workout>> {
   /// The parameter `planId` of this provider.
   String get planId;
 }
 
-class _PlanWorkoutsProviderElement extends FutureProviderElement<List<Workout>>
+class _PlanWorkoutsProviderElement
+    extends AutoDisposeFutureProviderElement<List<Workout>>
     with PlanWorkoutsRef {
   _PlanWorkoutsProviderElement(super.provider);
 
@@ -173,14 +174,14 @@ class _PlanWorkoutsProviderElement extends FutureProviderElement<List<Workout>>
   String get planId => (origin as PlanWorkoutsProvider).planId;
 }
 
-String _$planNutritionHash() => r'0969eeb3861bc8e779c5a77bac498388a9e28499';
+String _$planNutritionHash() => r'75aad2961ef69e118fa8207f1ea68f819fdf1b08';
 
 /// See also [planNutrition].
 @ProviderFor(planNutrition)
 const planNutritionProvider = PlanNutritionFamily();
 
 /// See also [planNutrition].
-class PlanNutritionFamily extends Family<AsyncValue<Nutrition>> {
+class PlanNutritionFamily extends Family<AsyncValue<Nutrition?>> {
   /// See also [planNutrition].
   const PlanNutritionFamily();
 
@@ -218,7 +219,7 @@ class PlanNutritionFamily extends Family<AsyncValue<Nutrition>> {
 }
 
 /// See also [planNutrition].
-class PlanNutritionProvider extends FutureProvider<Nutrition> {
+class PlanNutritionProvider extends AutoDisposeFutureProvider<Nutrition?> {
   /// See also [planNutrition].
   PlanNutritionProvider(
     String planId,
@@ -253,7 +254,7 @@ class PlanNutritionProvider extends FutureProvider<Nutrition> {
 
   @override
   Override overrideWith(
-    FutureOr<Nutrition> Function(PlanNutritionRef provider) create,
+    FutureOr<Nutrition?> Function(PlanNutritionRef provider) create,
   ) {
     return ProviderOverride(
       origin: this,
@@ -270,7 +271,7 @@ class PlanNutritionProvider extends FutureProvider<Nutrition> {
   }
 
   @override
-  FutureProviderElement<Nutrition> createElement() {
+  AutoDisposeFutureProviderElement<Nutrition?> createElement() {
     return _PlanNutritionProviderElement(this);
   }
 
@@ -290,13 +291,13 @@ class PlanNutritionProvider extends FutureProvider<Nutrition> {
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin PlanNutritionRef on FutureProviderRef<Nutrition> {
+mixin PlanNutritionRef on AutoDisposeFutureProviderRef<Nutrition?> {
   /// The parameter `planId` of this provider.
   String get planId;
 }
 
-class _PlanNutritionProviderElement extends FutureProviderElement<Nutrition>
-    with PlanNutritionRef {
+class _PlanNutritionProviderElement
+    extends AutoDisposeFutureProviderElement<Nutrition?> with PlanNutritionRef {
   _PlanNutritionProviderElement(super.provider);
 
   @override

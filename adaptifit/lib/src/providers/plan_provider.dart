@@ -2,21 +2,24 @@ import 'package:adaptifit/src/models/nutrition.dart';
 import 'package:adaptifit/src/models/plan.dart';
 import 'package:adaptifit/src/models/workout.dart';
 import 'package:adaptifit/src/providers/api_service_provider.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final myPlansProvider = FutureProvider<List<Plan>>((ref) {
+part 'plan_provider.g.dart';
+
+@Riverpod(keepAlive: true)
+Future<List<Plan>> plans(PlansRef ref) {
   final apiService = ref.watch(apiServiceProvider);
   return apiService.getMyPlans();
-});
+}
 
-final workoutsForPlanProvider =
-    FutureProvider.family<List<Workout>, String>((ref, planId) {
+@riverpod
+Future<List<Workout>> planWorkouts(PlanWorkoutsRef ref, String planId) {
   final apiService = ref.watch(apiServiceProvider);
   return apiService.getWorkoutsForPlan(planId);
-});
+}
 
-final planNutritionProvider =
-    FutureProvider.family<Nutrition?, String>((ref, planId) async {
+@riverpod
+Future<Nutrition?> planNutrition(PlanNutritionRef ref, String planId) async {
   final apiService = ref.watch(apiServiceProvider);
   try {
     final nutrition = await apiService.getNutritionForPlan(planId);
@@ -24,4 +27,4 @@ final planNutritionProvider =
   } catch (_) {
     return null;
   }
-});
+}

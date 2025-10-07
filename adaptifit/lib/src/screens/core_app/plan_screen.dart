@@ -15,7 +15,6 @@ import 'package:adaptifit/src/models/workout.dart';
 
 import 'package:adaptifit/src/screens/core_app/calendar_screen.dart';
 import 'package:adaptifit/src/screens/core_app/daily_plan_detail_screen.dart';
-import 'package:adaptifit/src/screens/core_app/plan_details_screen.dart';
 import 'package:adaptifit/src/screens/core_app/workout_overview_screen.dart';
 import 'package:adaptifit/src/screens/core_app/workout_detail_screen.dart';
 import 'package:adaptifit/src/screens/core_app/nutrition_plan_screen.dart';
@@ -23,12 +22,17 @@ import 'package:adaptifit/src/screens/core_app/nutrition_plan_screen.dart';
 class PlanScreen extends ConsumerWidget {
   const PlanScreen({super.key});
 
-  Future<void> _completeWorkout(BuildContext context, WidgetRef ref,
-      DateTime date) async {
+  Future<void> _completeWorkout(
+      BuildContext context, WidgetRef ref, DateTime date) async {
     try {
-      final dateString = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final dateString =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       await ref.read(apiServiceProvider).completeAllWorkout(dateString);
-      ref.refresh(todayCalendarEntryProvider);
+
+      // Invalidate providers to refresh data after completing workout
+      ref.invalidate(todayCalendarEntryProvider);
+      ref.invalidate(calendarEntriesProvider);
+      ref.invalidate(workoutProgressProvider);
     } catch (e) {
       debugPrint("Error completing workout: $e");
       if (context.mounted) {
@@ -39,12 +43,17 @@ class PlanScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _completeNutrition(BuildContext context, WidgetRef ref,
-      DateTime date) async {
+  Future<void> _completeNutrition(
+      BuildContext context, WidgetRef ref, DateTime date) async {
     try {
-      final dateString = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final dateString =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       await ref.read(apiServiceProvider).completeAllNutrition(dateString);
-      ref.refresh(todayCalendarEntryProvider);
+
+      // Invalidate providers to refresh data after completing nutrition
+      ref.invalidate(todayCalendarEntryProvider);
+      ref.invalidate(calendarEntriesProvider);
+      ref.invalidate(nutritionProgressProvider);
     } catch (e) {
       debugPrint("Error completing nutrition: $e");
       if (context.mounted) {
@@ -122,7 +131,7 @@ class PlanScreen extends ConsumerWidget {
             children: [
               if (calendarDay.workoutId.isNotEmpty &&
                   calendarDay.planId.isNotEmpty)
-                ref.watch(workoutsForPlanProvider(calendarDay.planId)).when(
+                ref.watch(planWorkoutsProvider(calendarDay.planId)).when(
                       data: (workouts) {
                         Workout? workout;
                         for (final w in workouts) {
@@ -181,7 +190,7 @@ class PlanScreen extends ConsumerWidget {
   }
 
   Widget _buildWorkoutLibraryList(BuildContext context, WidgetRef ref) {
-    final plansValue = ref.watch(myPlansProvider);
+    final plansValue = ref.watch(plansProvider);
     return plansValue.when(
       data: (plans) {
         if (plans.isEmpty) {
@@ -204,7 +213,7 @@ class PlanScreen extends ConsumerWidget {
                   builder: (context) {
                     return Consumer(builder: (context, ref, _) {
                       final workoutsAsync =
-                          ref.watch(workoutsForPlanProvider(firstPlan.id));
+                          ref.watch(planWorkoutsProvider(firstPlan.id));
                       return workoutsAsync.when(
                         data: (workouts) {
                           if (workouts.isEmpty) {
@@ -302,8 +311,7 @@ class PlanScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStyledContainer(
-      {required Widget child, bool isCentered = false}) {
+  Widget _buildStyledContainer({required Widget child}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20.0),
@@ -326,9 +334,11 @@ class PlanScreen extends ConsumerWidget {
   Widget _buildWorkoutCard(BuildContext context, Workout workout,
       CalendarEntry calendar, WidgetRef ref) {
     final workoutProgress = ref.watch(workoutProgressProvider);
-    final totalSetSlots = workout.exercises.fold<int>(0, (acc, ex) => acc + (ex.sets));
+    final totalSetSlots =
+        workout.exercises.fold<int>(0, (acc, ex) => acc + (ex.sets));
     final totalCompletedSlots = workoutProgress.fold<int>(0, (a, b) => a + b);
-    final bool isCompleted = totalCompletedSlots > 0 && totalCompletedSlots == totalSetSlots;
+    final bool isCompleted =
+        totalCompletedSlots > 0 && totalCompletedSlots == totalSetSlots;
 
     const primaryGreen = Color(0xFF1EB955);
 
@@ -373,18 +383,23 @@ class PlanScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Progress', style: TextStyle(fontWeight: FontWeight.w600)),
-              Text('${totalCompletedSlots}/${totalSetSlots} sets', style: const TextStyle(color: AppColors.subtitleGray)),
+              const Text('Progress',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('${totalCompletedSlots}/${totalSetSlots} sets',
+                  style: const TextStyle(color: AppColors.subtitleGray)),
             ],
           ),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
-              value: totalSetSlots == 0 ? 0.0 : totalCompletedSlots / totalSetSlots,
+              value: totalSetSlots == 0
+                  ? 0.0
+                  : totalCompletedSlots / totalSetSlots,
               minHeight: 8,
               backgroundColor: AppColors.lightGrey2,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
             ),
           ),
           const SizedBox(height: 16),
@@ -404,8 +419,7 @@ class PlanScreen extends ConsumerWidget {
           ElevatedButton(
               onPressed: isCompleted
                   ? null
-                  : () => _completeWorkout(
-                      context, ref, calendar.date),
+                  : () => _completeWorkout(context, ref, calendar.date),
               style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,
@@ -437,8 +451,10 @@ class PlanScreen extends ConsumerWidget {
       CalendarEntry calendar, WidgetRef ref) {
     final nutritionProgress = ref.watch(nutritionProgressProvider);
     final totalMeals = nutrition.meals.length;
-    final totalCompletedMeals = nutritionProgress.values.where((isCompleted) => isCompleted).length;
-    final bool isCompleted = totalCompletedMeals > 0 && totalCompletedMeals == totalMeals;
+    final totalCompletedMeals =
+        nutritionProgress.values.where((isCompleted) => isCompleted).length;
+    final bool isCompleted =
+        totalCompletedMeals > 0 && totalCompletedMeals == totalMeals;
 
     const primaryBlue = Color(0xFF3A7DFF);
     const primaryGreen = Color(0xFF1EB955);
@@ -476,8 +492,10 @@ class PlanScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Progress', style: TextStyle(fontWeight: FontWeight.w600)),
-              Text('${totalCompletedMeals}/${totalMeals} meals', style: const TextStyle(color: AppColors.subtitleGray)),
+              const Text('Progress',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('${totalCompletedMeals}/${totalMeals} meals',
+                  style: const TextStyle(color: AppColors.subtitleGray)),
             ],
           ),
           const SizedBox(height: 8),
@@ -487,7 +505,8 @@ class PlanScreen extends ConsumerWidget {
               value: totalMeals == 0 ? 0.0 : totalCompletedMeals / totalMeals,
               minHeight: 8,
               backgroundColor: AppColors.lightGrey2,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
             ),
           ),
           const SizedBox(height: 16),
@@ -507,8 +526,7 @@ class PlanScreen extends ConsumerWidget {
           ElevatedButton(
               onPressed: isCompleted
                   ? null
-                  : () => _completeNutrition(
-                      context, ref, calendar.date),
+                  : () => _completeNutrition(context, ref, calendar.date),
               style: ElevatedButton.styleFrom(
                   backgroundColor:
                       isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,

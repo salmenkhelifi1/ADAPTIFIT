@@ -13,7 +13,7 @@ class PlanDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final workoutsValue = ref.watch(workoutsForPlanProvider(plan.id));
+    final workoutsValue = ref.watch(planWorkoutsProvider(plan.id));
 
     return Scaffold(
       appBar: AppBar(
@@ -51,8 +51,8 @@ class PlanDetailsScreen extends ConsumerWidget {
                       ...workout.exercises.map((exercise) {
                         return ListTile(
                           title: Text(exercise.name,
-                              style: const TextStyle(
-                                  color: AppColors.darkText)),
+                              style:
+                                  const TextStyle(color: AppColors.darkText)),
                           subtitle: Text(
                               'Sets: ${exercise.sets}, Reps: ${exercise.reps}',
                               style: const TextStyle(
