@@ -2,6 +2,7 @@ import 'package:adaptifit/src/providers/calendar_provider.dart';
 import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:adaptifit/src/providers/plan_provider.dart';
 import 'package:adaptifit/src/providers/progress_provider.dart';
+import 'package:adaptifit/src/providers/nutrition_provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +16,6 @@ import 'package:adaptifit/src/models/workout.dart';
 
 import 'package:adaptifit/src/screens/core_app/calendar_screen.dart';
 import 'package:adaptifit/src/screens/core_app/daily_plan_detail_screen.dart';
-import 'package:adaptifit/src/screens/core_app/workout_overview_screen.dart';
 import 'package:adaptifit/src/screens/core_app/workout_detail_screen.dart';
 import 'package:adaptifit/src/screens/core_app/nutrition_plan_screen.dart';
 
@@ -32,7 +32,15 @@ class PlanScreen extends ConsumerWidget {
       // Invalidate providers to refresh data after completing workout
       ref.invalidate(todayCalendarEntryProvider);
       ref.invalidate(calendarEntriesProvider);
-      ref.invalidate(workoutProgressProvider);
+      ref.invalidate(
+          workoutProgressCountProvider); // ADDED: Invalidate progress count provider
+      // -----------------------
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Workout marked as complete!')),
+        );
+      }
     } catch (e) {
       debugPrint("Error completing workout: $e");
       if (context.mounted) {
@@ -53,7 +61,15 @@ class PlanScreen extends ConsumerWidget {
       // Invalidate providers to refresh data after completing nutrition
       ref.invalidate(todayCalendarEntryProvider);
       ref.invalidate(calendarEntriesProvider);
-      ref.invalidate(nutritionProgressProvider);
+      ref.invalidate(
+          nutritionProgressCountProvider); // ADDED: Invalidate nutrition progress count provider
+      // -----------------------
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nutrition marked as complete!')),
+        );
+      }
     } catch (e) {
       debugPrint("Error completing nutrition: $e");
       if (context.mounted) {
@@ -106,10 +122,10 @@ class PlanScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: _buildSectionHeader(title: "Your Workout Library"),
+                child: _buildSectionHeader(title: "Upcoming Plans"),
               ),
               const SizedBox(height: 10),
-              _buildWorkoutLibraryList(context, ref),
+              _buildUpcomingPlansList(context, ref),
               const SizedBox(height: 20),
             ],
           ),
@@ -189,65 +205,36 @@ class PlanScreen extends ConsumerWidget {
     return _buildWeeklyProgressCard(3, 5, 12, 21);
   }
 
-  Widget _buildWorkoutLibraryList(BuildContext context, WidgetRef ref) {
-    final plansValue = ref.watch(plansProvider);
-    return plansValue.when(
-      data: (plans) {
-        if (plans.isEmpty) {
+  Widget _buildUpcomingPlansList(BuildContext context, WidgetRef ref) {
+    final calendarEntriesValue = ref.watch(calendarEntriesProvider);
+    return calendarEntriesValue.when(
+      data: (calendarEntries) {
+        // Filter to get only today and future entries
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final upcomingEntries = calendarEntries.where((entry) {
+          final entryDate =
+              DateTime(entry.date.year, entry.date.month, entry.date.day);
+          return entryDate.isAtSameMomentAs(today) || entryDate.isAfter(today);
+        }).toList();
+
+        if (upcomingEntries.isEmpty) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: _buildStyledContainer(child: const Text('No plans found.')),
+            child: _buildStyledContainer(
+                child: const Text('No upcoming plans found.')),
           );
         }
-        final firstPlan = plans.first;
+
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: _buildUpcomingPlanCard(
-            dayOfWeek: firstPlan.planName,
-            date: '${firstPlan.duration} days - ${firstPlan.difficulty}',
-            workoutName: firstPlan.planName,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) {
-                    return Consumer(builder: (context, ref, _) {
-                      final workoutsAsync =
-                          ref.watch(planWorkoutsProvider(firstPlan.id));
-                      return workoutsAsync.when(
-                        data: (workouts) {
-                          if (workouts.isEmpty) {
-                            return Scaffold(
-                              backgroundColor: AppColors.screenBackground,
-                              appBar: AppBar(
-                                backgroundColor: AppColors.screenBackground,
-                                elevation: 0,
-                              ),
-                              body: const Center(
-                                  child:
-                                      Text('No workouts found in this plan.')),
-                            );
-                          }
-                          return WorkoutOverviewScreen(workout: workouts.first);
-                        },
-                        loading: () => const Scaffold(
-                          backgroundColor: AppColors.screenBackground,
-                          body: Center(child: CircularProgressIndicator()),
-                        ),
-                        error: (e, s) => Scaffold(
-                          backgroundColor: AppColors.screenBackground,
-                          appBar: AppBar(
-                            backgroundColor: AppColors.screenBackground,
-                            elevation: 0,
-                          ),
-                          body: Center(child: Text('Error: $e')),
-                        ),
-                      );
-                    });
-                  },
-                ),
-              );
-            },
+          child: Column(
+            children: upcomingEntries
+                .map((entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: _buildUpcomingPlanCard(entry: entry),
+                    ))
+                .toList(),
           ),
         );
       },
@@ -334,11 +321,11 @@ class PlanScreen extends ConsumerWidget {
   Widget _buildWorkoutCard(BuildContext context, Workout workout,
       CalendarEntry calendar, WidgetRef ref) {
     final workoutProgress = ref.watch(workoutProgressProvider);
+    final progressStream = ref.watch(workoutProgressStreamProvider);
     final totalSetSlots =
         workout.exercises.fold<int>(0, (acc, ex) => acc + (ex.sets));
     final totalCompletedSlots = workoutProgress.fold<int>(0, (a, b) => a + b);
-    final bool isCompleted =
-        totalCompletedSlots > 0 && totalCompletedSlots == totalSetSlots;
+    final bool isWorkoutCompleted = calendar.workoutCompleted;
 
     const primaryGreen = Color(0xFF1EB955);
 
@@ -380,6 +367,58 @@ class PlanScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
+          // Real-time progress display
+          progressStream.when(
+            data: (progressCounts) {
+              if (progressCounts['total']! > 0) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${progressCounts['completed']}/${progressCounts['total']} Sets Completed',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          '${((progressCounts['completed']! / progressCounts['total']!) * 100).toInt()}%',
+                          style: const TextStyle(
+                            color: AppColors.subtitleGray,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: progressCounts['total']! > 0
+                            ? progressCounts['completed']! /
+                                progressCounts['total']!
+                            : 0.0,
+                        minHeight: 6,
+                        backgroundColor: AppColors.lightGrey2,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryGreen),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, stack) => const SizedBox.shrink(),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -417,12 +456,13 @@ class PlanScreen extends ConsumerWidget {
                       color: primaryGreen, fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-              onPressed: isCompleted
+              onPressed: isWorkoutCompleted
                   ? null
                   : () => _completeWorkout(context, ref, calendar.date),
               style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,
+                  backgroundColor: isWorkoutCompleted
+                      ? const Color(0xFFE0E0E0)
+                      : primaryGreen,
                   disabledBackgroundColor: const Color(0xFFE0E0E0),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
@@ -431,12 +471,19 @@ class PlanScreen extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Workout Completed',
+                  Text(
+                      isWorkoutCompleted
+                          ? 'Workout Completed'
+                          : totalCompletedSlots > 0
+                              ? '${totalCompletedSlots}/${totalSetSlots} sets done'
+                              : 'Complete Workout',
                       style: TextStyle(
-                          color: isCompleted ? Colors.black54 : Colors.white,
+                          color: isWorkoutCompleted
+                              ? Colors.black54
+                              : Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 16)),
-                  if (isCompleted) ...[
+                  if (isWorkoutCompleted) ...[
                     const SizedBox(width: 8),
                     const Icon(Icons.check, color: Colors.black54, size: 20),
                   ]
@@ -450,11 +497,12 @@ class PlanScreen extends ConsumerWidget {
   Widget _buildNutritionCard(BuildContext context, Nutrition nutrition,
       CalendarEntry calendar, WidgetRef ref) {
     final nutritionProgress = ref.watch(nutritionProgressProvider);
+    final progressStream = ref.watch(nutritionProgressStreamProvider);
     final totalMeals = nutrition.meals.length;
     final totalCompletedMeals =
         nutritionProgress.values.where((isCompleted) => isCompleted).length;
-    final bool isCompleted =
-        totalCompletedMeals > 0 && totalCompletedMeals == totalMeals;
+    final bool areAllMealsCompleted =
+        calendar.completedNutritionIds.length == calendar.nutritionIds.length;
 
     const primaryBlue = Color(0xFF3A7DFF);
     const primaryGreen = Color(0xFF1EB955);
@@ -489,6 +537,58 @@ class PlanScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
+          // Real-time progress display
+          progressStream.when(
+            data: (progressCounts) {
+              if (progressCounts['total']! > 0) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${progressCounts['completed']}/${progressCounts['total']} Meals Completed',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          '${((progressCounts['completed']! / progressCounts['total']!) * 100).toInt()}%',
+                          style: const TextStyle(
+                            color: AppColors.subtitleGray,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: progressCounts['total']! > 0
+                            ? progressCounts['completed']! /
+                                progressCounts['total']!
+                            : 0.0,
+                        minHeight: 6,
+                        backgroundColor: AppColors.lightGrey2,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryGreen),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, stack) => const SizedBox.shrink(),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -524,12 +624,13 @@ class PlanScreen extends ConsumerWidget {
                       color: primaryGreen, fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-              onPressed: isCompleted
+              onPressed: areAllMealsCompleted
                   ? null
                   : () => _completeNutrition(context, ref, calendar.date),
               style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isCompleted ? const Color(0xFFE0E0E0) : primaryGreen,
+                  backgroundColor: areAllMealsCompleted
+                      ? const Color(0xFFE0E0E0)
+                      : primaryGreen,
                   disabledBackgroundColor: const Color(0xFFE0E0E0),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
@@ -538,12 +639,19 @@ class PlanScreen extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Nutrition Completed',
+                  Text(
+                      areAllMealsCompleted
+                          ? 'Nutrition Completed'
+                          : totalCompletedMeals > 0
+                              ? '${totalCompletedMeals}/${totalMeals} meals done'
+                              : 'Complete Nutrition',
                       style: TextStyle(
-                          color: isCompleted ? Colors.black54 : Colors.white,
+                          color: areAllMealsCompleted
+                              ? Colors.black54
+                              : Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 16)),
-                  if (isCompleted) ...[
+                  if (areAllMealsCompleted) ...[
                     const SizedBox(width: 8),
                     const Icon(Icons.check, color: Colors.black54, size: 20),
                   ]
@@ -622,59 +730,182 @@ class PlanScreen extends ConsumerWidget {
     );
   }
 
-  String _getWorkoutEmoji(String workoutName) {
-    final name = workoutName.toLowerCase();
-    if (name.contains('strength')) return '💪';
-    if (name.contains('cardio')) return '🏃';
-    if (name.contains('recovery')) return '🧘';
-    if (name.contains('rest')) return '😌';
-    return '🏋️';
+  Widget _buildUpcomingPlanCard({CalendarEntry? entry}) {
+    if (entry == null) {
+      return _buildStyledContainer(
+        child: const Text('No plan data available'),
+      );
+    }
+
+    return Consumer(
+      builder: (context, ref, child) {
+        return _buildStyledContainer(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Day of week and date
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _getDayOfWeek(entry.date),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.darkText,
+                    ),
+                  ),
+                  Text(
+                    DateFormat('EEE, MMM d').format(entry.date),
+                    style: const TextStyle(
+                      color: AppColors.subtitleGray,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Workout information
+              if (entry.workoutId.isNotEmpty) ...[
+                ref.watch(planWorkoutsProvider(entry.planId)).when(
+                      data: (workouts) {
+                        if (workouts.isEmpty) return const SizedBox.shrink();
+                        final workout = workouts.firstWhere(
+                          (w) => w.id == entry.workoutId,
+                          orElse: () => workouts.first,
+                        );
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.fitness_center,
+                                    color: AppColors.primaryGreen, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    workout.name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.darkText,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (e, s) => const SizedBox.shrink(),
+                    ),
+              ],
+
+              // Nutrition information with detailed meals
+              if (entry.nutritionIds.isNotEmpty) ...[
+                ref.watch(nutritionProvider(entry.nutritionIds.first)).when(
+                      data: (nutrition) {
+                        // Extract breakfast and dinner meals
+                        final breakfast = nutrition.meals['breakfast'];
+                        final dinner = nutrition.meals['dinner'];
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.apple,
+                                    color: AppColors.secondaryBlue, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${nutrition.meals.length} meals planned',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.subtitleGray,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Detailed meal information
+                            if (breakfast != null) ...[
+                              Text(
+                                'Breakfast: ${breakfast.name}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.darkText,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                            ],
+                            if (dinner != null) ...[
+                              Text(
+                                'Dinner: ${dinner.name}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.darkText,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                            ],
+                          ],
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (e, s) => const SizedBox.shrink(),
+                    ),
+              ],
+
+              // View Details button
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            DailyPlanDetailScreen(date: entry.date),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'View Details >',
+                    style: TextStyle(
+                      color: AppColors.primaryGreen,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildUpcomingPlanCard(
-      {required String dayOfWeek,
-      required String date,
-      required String workoutName,
-      required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: _buildStyledContainer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(dayOfWeek,
-                style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.darkText)),
-            const SizedBox(height: 4),
-            Text(date,
-                style: const TextStyle(
-                    color: AppColors.subtitleGray, fontSize: 14)),
-            const SizedBox(height: 20),
-            Row(children: [
-              Text(_getWorkoutEmoji(workoutName),
-                  style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(workoutName,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText)),
-              ),
-            ]),
-            const SizedBox(height: 16),
-            const Align(
-                alignment: Alignment.centerRight,
-                child: Text('View Details >',
-                    style: TextStyle(
-                        color: AppColors.primaryGreen,
-                        fontWeight: FontWeight.w600))),
-          ],
-        ),
-      ),
-    );
+  String _getDayOfWeek(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final entryDate = DateTime(date.year, date.month, date.day);
+
+    if (entryDate.isAtSameMomentAs(today)) {
+      return 'Today';
+    } else if (entryDate.isAtSameMomentAs(today.add(const Duration(days: 1)))) {
+      return 'Tomorrow';
+    } else {
+      return DateFormat('EEEE').format(date);
+    }
   }
 
   Widget _buildNoPlanCard(

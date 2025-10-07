@@ -156,7 +156,7 @@ class ApiService {
 
   Future<List<Nutrition>> getNutritionsForPlan(String planId) async {
     await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
-    return [ 
+    return [
       Nutrition(
         id: 'mock_id',
         name: 'Mock Nutrition',
@@ -216,7 +216,8 @@ class ApiService {
     if (response.statusCode == 200) {
       if (response.body.isEmpty) return null;
       final dynamic responseBody = jsonDecode(response.body);
-      if (responseBody is Map<String, dynamic> && responseBody.containsKey('data')) {
+      if (responseBody is Map<String, dynamic> &&
+          responseBody.containsKey('data')) {
         return CalendarEntry.fromJson(responseBody['data']);
       } else {
         // If the response is not in the expected format, maybe it's the entry itself
@@ -246,7 +247,8 @@ class ApiService {
     }
   }
 
-  Future<CalendarEntry> completeWorkout(DateTime date, {required bool completed}) async {
+  Future<CalendarEntry> completeWorkout(DateTime date,
+      {required bool completed}) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final response = await http.put(
@@ -262,11 +264,13 @@ class ApiService {
     }
   }
 
-  Future<CalendarEntry> completeNutrition(DateTime date, String nutritionId) async {
+  Future<CalendarEntry> completeNutrition(
+      DateTime date, String nutritionId) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final response = await http.put(
-      Uri.parse('$_baseUrl/api/calendar/$dateString/nutrition/$nutritionId/complete'),
+      Uri.parse(
+          '$_baseUrl/api/calendar/$dateString/nutrition/$nutritionId/complete'),
       headers: await _getHeaders(),
       body: jsonEncode({'completed': true}),
     );
@@ -278,11 +282,13 @@ class ApiService {
     }
   }
 
-  Future<void> updateWorkoutSetProgress(String workoutId, int exerciseIndex, int completedSets, DateTime date) async {
+  Future<void> updateWorkoutSetProgress(String workoutId, int exerciseIndex,
+      int completedSets, DateTime date) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final response = await http.put(
-      Uri.parse('$_baseUrl/api/progress/workout/$workoutId/exercises/$exerciseIndex/sets'),
+      Uri.parse(
+          '$_baseUrl/api/progress/workout/$workoutId/exercises/$exerciseIndex/sets'),
       headers: await _getHeaders(),
       body: jsonEncode({'completedSets': completedSets, 'date': dateString}),
     );
@@ -307,6 +313,73 @@ class ApiService {
     throw Exception('Failed to get workout progress: ${response.body}');
   }
 
+  // Stream method for real-time workout progress updates
+  Stream<Map<String, int>> getWorkoutProgressStream(String date) async* {
+    while (true) {
+      try {
+        final progress = await getWorkoutProgress(date);
+        final exercises = progress['exercises'] as List? ?? [];
+
+        int completedSets = 0;
+        int totalSets = 0;
+
+        for (var exercise in exercises) {
+          final completed = exercise['completedSets'] as int? ?? 0;
+          final total = exercise['totalSets'] as int? ?? 0;
+          completedSets += completed;
+          totalSets += total;
+        }
+
+        yield {
+          'completed': completedSets,
+          'total': totalSets,
+        };
+      } catch (e) {
+        // If there's an error, yield default values
+        yield {'completed': 0, 'total': 0};
+      }
+
+      // Wait for 3 seconds before polling again
+      await Future.delayed(const Duration(seconds: 3));
+    }
+  }
+
+  // Stream method for real-time nutrition progress updates
+  Stream<Map<String, int>> getNutritionProgressStream(String date) async* {
+    while (true) {
+      try {
+        final response = await http.get(
+          Uri.parse('$_baseUrl/api/progress/nutrition/$date'),
+          headers: await _getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final body = jsonDecode(response.body);
+          if (body['success'] == true) {
+            final data = body['data'] as Map<String, dynamic>;
+            final completedMeals = data['completedMeals'] as List? ?? [];
+            final totalMeals = data['totalMeals'] as int? ?? 0;
+
+            yield {
+              'completed': completedMeals.length,
+              'total': totalMeals,
+            };
+          } else {
+            yield {'completed': 0, 'total': 0};
+          }
+        } else {
+          yield {'completed': 0, 'total': 0};
+        }
+      } catch (e) {
+        // If there's an error, yield default values
+        yield {'completed': 0, 'total': 0};
+      }
+
+      // Wait for 3 seconds before polling again
+      await Future.delayed(const Duration(seconds: 3));
+    }
+  }
+
   Future<void> completeAllWorkout(String date) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/api/progress/workout/$date/complete-all'),
@@ -329,8 +402,6 @@ class ApiService {
     }
   }
 
-
-
   Future<List<CalendarEntry>> getCalendarEntries() async {
     final response = await http.get(
       Uri.parse('$_baseUrl/api/calendar/'),
@@ -340,7 +411,8 @@ class ApiService {
     if (response.statusCode == 200) {
       print(response.body);
       final dynamic responseBody = jsonDecode(response.body);
-      if (responseBody is Map<String, dynamic> && responseBody.containsKey('data')) {
+      if (responseBody is Map<String, dynamic> &&
+          responseBody.containsKey('data')) {
         final List<dynamic> entriesJson = responseBody['data'];
         return entriesJson.map((json) => CalendarEntry.fromJson(json)).toList();
       } else {
