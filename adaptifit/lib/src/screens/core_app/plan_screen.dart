@@ -1,8 +1,7 @@
 import 'package:adaptifit/src/providers/calendar_provider.dart';
-import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:adaptifit/src/providers/plan_provider.dart';
-import 'package:adaptifit/src/providers/progress_provider.dart';
 import 'package:adaptifit/src/providers/nutrition_provider.dart';
+import 'package:adaptifit/src/providers/today_plan_provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,16 +24,7 @@ class PlanScreen extends ConsumerWidget {
   Future<void> _completeWorkout(
       BuildContext context, WidgetRef ref, DateTime date) async {
     try {
-      final dateString =
-          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-      await ref.read(apiServiceProvider).completeAllWorkout(dateString);
-
-      // Invalidate providers to refresh data after completing workout
-      ref.invalidate(todayCalendarEntryProvider);
-      ref.invalidate(calendarEntriesProvider);
-      ref.invalidate(
-          workoutProgressCountProvider); // ADDED: Invalidate progress count provider
-      // -----------------------
+      await ref.read(todayPlanNotifierProvider.notifier).completeTodayWorkout();
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -54,16 +44,9 @@ class PlanScreen extends ConsumerWidget {
   Future<void> _completeNutrition(
       BuildContext context, WidgetRef ref, DateTime date) async {
     try {
-      final dateString =
-          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-      await ref.read(apiServiceProvider).completeAllNutrition(dateString);
-
-      // Invalidate providers to refresh data after completing nutrition
-      ref.invalidate(todayCalendarEntryProvider);
-      ref.invalidate(calendarEntriesProvider);
-      ref.invalidate(
-          nutritionProgressCountProvider); // ADDED: Invalidate nutrition progress count provider
-      // -----------------------
+      await ref
+          .read(todayPlanNotifierProvider.notifier)
+          .completeTodayNutrition();
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -135,10 +118,10 @@ class PlanScreen extends ConsumerWidget {
   }
 
   Widget _buildTodaysPlan(BuildContext context, WidgetRef ref) {
-    final calendarEntryValue = ref.watch(todayCalendarEntryProvider);
+    final todayPlanState = ref.watch(todayPlanNotifierProvider);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: calendarEntryValue.when(
+      child: todayPlanState.entry.when(
         data: (calendarDay) {
           if (calendarDay == null) {
             return _buildNoPlanCard(title: "Rest Day");
@@ -147,48 +130,41 @@ class PlanScreen extends ConsumerWidget {
             children: [
               if (calendarDay.workoutId.isNotEmpty &&
                   calendarDay.planId.isNotEmpty)
-                ref.watch(planWorkoutsProvider(calendarDay.planId)).when(
-                      data: (workouts) {
-                        Workout? workout;
-                        for (final w in workouts) {
-                          if (w.id == calendarDay.workoutId) {
-                            workout = w;
-                            break;
-                          }
-                        }
-                        if (workout == null) {
-                          return const Center(
-                              child: Text(
-                                  "Today's workout not found in the plan."));
-                        }
-                        return _buildWorkoutCard(
-                            context, workout, calendarDay, ref);
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (e, s) =>
-                          const Center(child: Text("Workout not found")),
-                    )
+                todayPlanState.workout.when(
+                  data: (workout) {
+                    if (workout == null) {
+                      return const Center(
+                          child:
+                              Text("Today's workout not found in the plan."));
+                    }
+                    return _buildWorkoutCard(
+                        context, workout, calendarDay, ref);
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, s) =>
+                      const Center(child: Text("Workout not found")),
+                )
               else
                 _buildNoPlanCard(
                     title: "Rest Day", message: "Enjoy your day off!"),
               if (calendarDay.nutritionIds.isNotEmpty &&
                   calendarDay.planId.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                ref.watch(planNutritionProvider(calendarDay.planId)).when(
-                      data: (nutrition) {
-                        if (nutrition == null) {
-                          return const Center(
-                              child: Text("Nutrition plan not found"));
-                        }
-                        return _buildNutritionCard(
-                            context, nutrition, calendarDay, ref);
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (e, s) =>
-                          const Center(child: Text("Nutrition plan not found")),
-                    ),
+                todayPlanState.nutrition.when(
+                  data: (nutrition) {
+                    if (nutrition == null) {
+                      return const Center(
+                          child: Text("Nutrition plan not found"));
+                    }
+                    return _buildNutritionCard(
+                        context, nutrition, calendarDay, ref);
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, s) =>
+                      const Center(child: Text("Nutrition plan not found")),
+                ),
               ]
             ],
           );
@@ -320,12 +296,11 @@ class PlanScreen extends ConsumerWidget {
 
   Widget _buildWorkoutCard(BuildContext context, Workout workout,
       CalendarEntry calendar, WidgetRef ref) {
-    final workoutProgress = ref.watch(workoutProgressProvider);
-    final progressStream = ref.watch(workoutProgressStreamProvider);
-    final totalSetSlots =
-        workout.exercises.fold<int>(0, (acc, ex) => acc + (ex.sets));
-    final totalCompletedSlots = workoutProgress.fold<int>(0, (a, b) => a + b);
-    final bool isWorkoutCompleted = calendar.workoutCompleted;
+    final todayPlanState = ref.watch(todayPlanNotifierProvider);
+    final progressCounts = todayPlanState.workoutProgressCount;
+    final totalSetSlots = progressCounts['total']!;
+    final totalCompletedSlots = progressCounts['completed']!;
+    final bool isWorkoutCompleted = todayPlanState.isWorkoutCompleted;
 
     const primaryGreen = Color(0xFF1EB955);
 
@@ -367,58 +342,6 @@ class PlanScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          // Real-time progress display
-          progressStream.when(
-            data: (progressCounts) {
-              if (progressCounts['total']! > 0) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${progressCounts['completed']}/${progressCounts['total']} Sets Completed',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          '${((progressCounts['completed']! / progressCounts['total']!) * 100).toInt()}%',
-                          style: const TextStyle(
-                            color: AppColors.subtitleGray,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: progressCounts['total']! > 0
-                            ? progressCounts['completed']! /
-                                progressCounts['total']!
-                            : 0.0,
-                        minHeight: 6,
-                        backgroundColor: AppColors.lightGrey2,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.primaryGreen),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                );
-              }
-              return const SizedBox.shrink();
-            },
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, stack) => const SizedBox.shrink(),
-          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -496,13 +419,11 @@ class PlanScreen extends ConsumerWidget {
 
   Widget _buildNutritionCard(BuildContext context, Nutrition nutrition,
       CalendarEntry calendar, WidgetRef ref) {
-    final nutritionProgress = ref.watch(nutritionProgressProvider);
-    final progressStream = ref.watch(nutritionProgressStreamProvider);
-    final totalMeals = nutrition.meals.length;
-    final totalCompletedMeals =
-        nutritionProgress.values.where((isCompleted) => isCompleted).length;
-    final bool areAllMealsCompleted =
-        calendar.completedNutritionIds.length == calendar.nutritionIds.length;
+    final todayPlanState = ref.watch(todayPlanNotifierProvider);
+    final progressCounts = todayPlanState.nutritionProgressCount;
+    final totalMeals = progressCounts['total']!;
+    final totalCompletedMeals = progressCounts['completed']!;
+    final bool isNutritionCompleted = todayPlanState.isNutritionCompleted;
 
     const primaryBlue = Color(0xFF3A7DFF);
     const primaryGreen = Color(0xFF1EB955);
@@ -537,58 +458,6 @@ class PlanScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          // Real-time progress display
-          progressStream.when(
-            data: (progressCounts) {
-              if (progressCounts['total']! > 0) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${progressCounts['completed']}/${progressCounts['total']} Meals Completed',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Text(
-                          '${((progressCounts['completed']! / progressCounts['total']!) * 100).toInt()}%',
-                          style: const TextStyle(
-                            color: AppColors.subtitleGray,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: LinearProgressIndicator(
-                        value: progressCounts['total']! > 0
-                            ? progressCounts['completed']! /
-                                progressCounts['total']!
-                            : 0.0,
-                        minHeight: 6,
-                        backgroundColor: AppColors.lightGrey2,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.primaryGreen),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                );
-              }
-              return const SizedBox.shrink();
-            },
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, stack) => const SizedBox.shrink(),
-          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -624,11 +493,11 @@ class PlanScreen extends ConsumerWidget {
                       color: primaryGreen, fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           ElevatedButton(
-              onPressed: areAllMealsCompleted
+              onPressed: isNutritionCompleted
                   ? null
                   : () => _completeNutrition(context, ref, calendar.date),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: areAllMealsCompleted
+                  backgroundColor: isNutritionCompleted
                       ? const Color(0xFFE0E0E0)
                       : primaryGreen,
                   disabledBackgroundColor: const Color(0xFFE0E0E0),
@@ -640,18 +509,18 @@ class PlanScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                      areAllMealsCompleted
+                      isNutritionCompleted
                           ? 'Nutrition Completed'
                           : totalCompletedMeals > 0
                               ? '${totalCompletedMeals}/${totalMeals} meals done'
                               : 'Complete Nutrition',
                       style: TextStyle(
-                          color: areAllMealsCompleted
+                          color: isNutritionCompleted
                               ? Colors.black54
                               : Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 16)),
-                  if (areAllMealsCompleted) ...[
+                  if (isNutritionCompleted) ...[
                     const SizedBox(width: 8),
                     const Icon(Icons.check, color: Colors.black54, size: 20),
                   ]

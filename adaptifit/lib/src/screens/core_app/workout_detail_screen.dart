@@ -1,7 +1,6 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/models/workout.dart';
-import 'package:adaptifit/src/providers/api_service_provider.dart';
-import 'package:adaptifit/src/providers/progress_provider.dart';
+import 'package:adaptifit/src/providers/today_plan_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,25 +10,25 @@ class WorkoutDetailScreen extends ConsumerStatefulWidget {
   const WorkoutDetailScreen({super.key, required this.workout});
 
   @override
-  ConsumerState<WorkoutDetailScreen> createState() => _WorkoutDetailScreenState();
+  ConsumerState<WorkoutDetailScreen> createState() =>
+      _WorkoutDetailScreenState();
 }
 
 class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
-
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(workoutProgressProvider.notifier).loadProgress(widget.workout.id, widget.workout.exercises.length));
+    // No need to manually load progress - the TodayPlanNotifier handles this
   }
 
   int get totalSetSlots =>
       widget.workout.exercises.fold<int>(0, (acc, ex) => acc + (ex.sets));
-  int get totalCompletedSlots => ref.watch(workoutProgressProvider).fold<int>(0, (a, b) => a + b);
 
   Future<void> _updateProgress(int exerciseIndex, int sets) async {
     try {
-      await ref.read(apiServiceProvider).updateWorkoutSetProgress(
-          widget.workout.id, exerciseIndex, sets, DateTime.now());
+      await ref
+          .read(todayPlanNotifierProvider.notifier)
+          .updateSetProgress(exerciseIndex, sets);
     } catch (e) {
       debugPrint("Error updating workout progress: $e");
       if (mounted) {
@@ -42,7 +41,6 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final completedSets = ref.watch(workoutProgressProvider);
     final workout = widget.workout;
     final exercises = workout.exercises;
     final exercisesCount = exercises.length;
@@ -105,6 +103,9 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
   }
 
   Widget _buildProgressCard() {
+    final todayPlanState = ref.watch(todayPlanNotifierProvider);
+    final progressCounts = todayPlanState.workoutProgressCount;
+    final totalCompletedSlots = progressCounts['completed']!;
     final progress =
         totalSetSlots == 0 ? 0.0 : totalCompletedSlots / totalSetSlots;
     return Container(
@@ -210,11 +211,11 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
   }
 
   Widget _buildSetCheckbox(int exerciseIndex, int slotIndex) {
-    final completedSets = ref.watch(workoutProgressProvider);
-    if (exerciseIndex >= completedSets.length) {
-      return const SizedBox.shrink();
-    }
-    final isChecked = completedSets[exerciseIndex] > slotIndex;
+    final todayPlanState = ref.watch(todayPlanNotifierProvider);
+    final workoutProgress =
+        todayPlanState.workoutProgress.valueOrNull ?? <int, int>{};
+    final completedSets = workoutProgress[exerciseIndex] ?? 0;
+    final isChecked = completedSets > slotIndex;
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
       child: InkWell(
@@ -225,7 +226,6 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
           } else {
             newCompletedSets = slotIndex + 1;
           }
-          ref.read(workoutProgressProvider.notifier).updateProgress(exerciseIndex, newCompletedSets);
           _updateProgress(exerciseIndex, newCompletedSets);
         },
         borderRadius: BorderRadius.circular(6),

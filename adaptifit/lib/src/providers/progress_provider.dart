@@ -45,6 +45,11 @@ class WorkoutProgressNotifier extends StateNotifier<List<int>> {
     }
   }
 
+  // Method to update progress from detail screens
+  void updateProgressFromDetail(int exerciseIndex, int completedSets) {
+    updateProgress(exerciseIndex, completedSets);
+  }
+
   void updateSetCompletion(
       int exerciseIndex, int completedSets, int totalSets) {
     if (exerciseIndex < state.length) {

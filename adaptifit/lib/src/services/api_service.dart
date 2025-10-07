@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 import '../models/user.dart';
 import '../models/plan.dart';
@@ -388,6 +389,36 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to complete all workout: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getNutritionProgress(String date) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/api/progress/nutrition/$date'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true) {
+        return body['data'] as Map<String, dynamic>;
+      }
+    }
+    throw Exception('Failed to get nutrition progress: ${response.body}');
+  }
+
+  Future<void> updateNutritionMealProgress(String nutritionId, String mealKey,
+      bool isCompleted, DateTime date) async {
+    final dateString = DateFormat('yyyy-MM-dd').format(date);
+    final response = await http.put(
+      Uri.parse('$_baseUrl/api/progress/nutrition/$nutritionId/meals/$mealKey'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'completed': isCompleted, 'date': dateString}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to update nutrition meal progress: ${response.body}');
     }
   }
 
