@@ -129,7 +129,6 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.white70,
-                        decoration: TextDecoration.underline,
                       ),
                     ),
                   ),

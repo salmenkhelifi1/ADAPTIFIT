@@ -195,16 +195,9 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
         // Handle progress fetch error
       }
 
-      // Fetch nutrition progress data
-      Map<String, dynamic> nutritionProgressData = {};
-      try {
-        final todayString = DateFormat('yyyy-MM-dd').format(today);
-        nutritionProgressData = await api.getNutritionProgress(todayString);
-      } catch (e) {
-        // Handle nutrition progress fetch error - use fallback
-        debugPrint("Nutrition progress API failed, using fallback: $e");
-        nutritionProgressData = {};
-      }
+      // Nutrition progress data is derived from the calendar entry, so no separate API call is needed.
+      // The _parseNutritionProgressWithFallback method will handle this.
+      final nutritionProgressData = <String, dynamic>{};
 
       // Step 3: Update state with all the fetched data
       state = state.copyWith(
@@ -358,25 +351,23 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
     currentProgress[mealKey] = isCompleted;
     state = state.copyWith(nutritionProgress: AsyncData(currentProgress));
 
-    // Then, make the API call in the background
+    // Make the API call to update the calendar entry with the new list of completed meals.
     try {
-      await api.updateNutritionMealProgress(
-          nutrition.id, mealKey, isCompleted, today);
+      final allCompletedMeals = currentProgress.entries
+          .where((e) => e.value)
+          .map((e) => e.key)
+          .toList();
+
+      // The 'completed' field is also required by the API when updating meals.
+      // We can derive it or just pass the current value.
+      final isDayCompleted = state.isNutritionCompleted;
+
+      await api.updateCalendarEntry(entry.date,
+          {'completedMeals': allCompletedMeals, 'completed': isDayCompleted});
     } catch (e) {
-      // Fallback to calendar entry update if nutrition progress API fails
-      debugPrint("Nutrition progress API failed, using fallback: $e");
-      try {
-        final allCompletedMeals = currentProgress.entries
-            .where((e) => e.value)
-            .map((e) => e.key)
-            .toList();
-        await api.updateCalendarEntry(
-            entry.date, {'completedMeals': allCompletedMeals});
-      } catch (fallbackError) {
-        debugPrint("Fallback also failed: $fallbackError");
-        // Revert optimistic update on error
-        await _fetchAllData();
-      }
+      debugPrint("Failed to update meal progress: $e");
+      // Revert optimistic update on error
+      await _fetchAllData();
     }
   }
 }

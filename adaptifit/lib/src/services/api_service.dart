@@ -417,7 +417,8 @@ class ApiService {
 
   Future<Map<String, dynamic>> getNutritionProgress(String date) async {
     final response = await _client.get(
-      Uri.parse('$_baseUrl/api/progress/nutrition/$date'),
+      // Corrected the endpoint to include '/date'
+      Uri.parse('$_baseUrl/api/progress/nutrition/date/$date'),
       headers: await _getHeaders(),
     );
 
@@ -463,7 +464,6 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      print(response.body);
       final dynamic responseBody = jsonDecode(response.body);
       if (responseBody is Map<String, dynamic> &&
           responseBody.containsKey('data')) {
