@@ -120,18 +120,28 @@ class TodayPlanState {
 // 2. REPLACE THE NOTIFIER WITH THIS ROBUST IMPLEMENTATION
 @riverpod
 class TodayPlanNotifier extends _$TodayPlanNotifier {
+  bool _hasInitialized = false;
+
   @override
   TodayPlanState build() {
-    // Start fetching data as soon as the provider is initialized.
-    _fetchAllData();
-    // Return the initial loading state. The UI will update as data comes in.
-    return const TodayPlanState();
+    // Only fetch data once on initialization
+    if (!_hasInitialized) {
+      _hasInitialized = true;
+      _fetchAllData();
+    }
+    // Return a state that indicates we're fetching data but not in loading state
+    return const TodayPlanState(
+      entry: AsyncData(null),
+      workout: AsyncData(null),
+      nutrition: AsyncData(null),
+      workoutProgress: AsyncData({}),
+      nutritionProgress: AsyncData({}),
+    );
   }
 
   // --- CORE DATA FETCHING LOGIC ---
   Future<void> _fetchAllData() async {
-    // Ensure we start in a loading state
-    state = const TodayPlanState();
+    // Don't reset state unnecessarily - just fetch data
     final api = ref.read(apiServiceProvider);
     final today = DateTime.now();
 
@@ -285,16 +295,32 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
     final api = ref.read(apiServiceProvider);
     final todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
     await api.completeAllWorkout(todayString);
-    // After completing, refresh all data to get the new state.
-    await _fetchAllData();
+
+    // Optimistically update the workout progress to show all sets completed
+    final workout = state.workout.value;
+    if (workout != null) {
+      final completedProgress = <int, int>{};
+      for (int i = 0; i < workout.exercises.length; i++) {
+        completedProgress[i] = workout.exercises[i].sets;
+      }
+      state = state.copyWith(workoutProgress: AsyncData(completedProgress));
+    }
   }
 
   Future<void> completeTodayNutrition() async {
     final api = ref.read(apiServiceProvider);
     final todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
     await api.completeAllNutrition(todayString);
-    // After completing, refresh all data to get the new state.
-    await _fetchAllData();
+
+    // Optimistically update the nutrition progress to show all meals completed
+    final nutrition = state.nutrition.value;
+    if (nutrition != null) {
+      final completedProgress = <String, bool>{};
+      for (final mealKey in nutrition.meals.keys) {
+        completedProgress[mealKey] = true;
+      }
+      state = state.copyWith(nutritionProgress: AsyncData(completedProgress));
+    }
   }
 
   Future<void> updateSetProgress(

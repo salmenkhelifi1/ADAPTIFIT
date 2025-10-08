@@ -13,6 +13,7 @@ import '../models/calendar_entry.dart';
 class ApiService {
   final String _baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
   final _secureStorage = const FlutterSecureStorage();
+  final http.Client _client = http.Client();
 
   Future<String?> _getToken() async {
     return await _secureStorage.read(key: 'jwt_token');
@@ -22,16 +23,32 @@ class ApiService {
     final token = await _getToken();
     return {
       'Content-Type': 'application/json',
+      'User-Agent': 'Adaptifit-Mobile-App/1.0',
+      'Accept': 'application/json',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Cache-Control': 'no-cache',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
   // Part 1: Authentication
-  Future<String> register(String name, String email, String password) async {
-    final response = await http.post(
+  Future<String> register(String name, String email, String password,
+      String confirmPassword) async {
+    final response = await _client.post(
       Uri.parse('$_baseUrl/api/auth/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'name': name, 'email': email, 'password': password}),
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Adaptifit-Mobile-App/1.0',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'password': password,
+        'confirmPassword': confirmPassword
+      }),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -45,9 +62,15 @@ class ApiService {
   }
 
   Future<String> login(String email, String password) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$_baseUrl/api/auth/login'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Adaptifit-Mobile-App/1.0',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
       body: jsonEncode({'email': email, 'password': password}),
     );
 
@@ -62,7 +85,7 @@ class ApiService {
   }
 
   Future<void> changePassword(String oldPassword, String newPassword) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$_baseUrl/api/auth/change-password'),
       headers: await _getHeaders(),
       body:
@@ -75,7 +98,7 @@ class ApiService {
   }
 
   Future<void> forgotPassword(String email) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$_baseUrl/api/auth/forgot-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email}),
@@ -87,7 +110,7 @@ class ApiService {
   }
 
   Future<void> resetPassword(String token, String newPassword) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$_baseUrl/api/auth/reset-password'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'token': token, 'newPassword': newPassword}),
@@ -100,7 +123,7 @@ class ApiService {
 
   // Part 2: User Data
   Future<User> getMyProfile() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/users/me'),
       headers: await _getHeaders(),
     );
@@ -113,7 +136,7 @@ class ApiService {
   }
 
   Future<User> submitOnboarding(Map<String, dynamic> onboardingAnswers) async {
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$_baseUrl/api/users/onboarding'),
       headers: await _getHeaders(),
       body: jsonEncode({'onboardingAnswers': onboardingAnswers}),
@@ -128,7 +151,7 @@ class ApiService {
 
   // Part 3: Plans, Workouts, and Nutrition
   Future<List<Plan>> getMyPlans() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/plans'),
       headers: await _getHeaders(),
     );
@@ -142,7 +165,7 @@ class ApiService {
   }
 
   Future<List<Workout>> getWorkoutsForPlan(String planId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/workouts/plan/$planId'),
       headers: await _getHeaders(),
     );
@@ -169,7 +192,7 @@ class ApiService {
   }
 
   Future<Nutrition> getNutritionForPlan(String planId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/nutrition/plan/$planId'),
       headers: await _getHeaders(),
     );
@@ -182,7 +205,7 @@ class ApiService {
   }
 
   Future<Nutrition> getNutritionById(String nutritionId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/nutrition/${nutritionId.trim()}'),
       headers: await _getHeaders(),
     );
@@ -195,7 +218,7 @@ class ApiService {
   }
 
   Future<void> regeneratePlan() async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$_baseUrl/api/plans/regenerate'),
       headers: await _getHeaders(),
     );
@@ -209,7 +232,7 @@ class ApiService {
   Future<CalendarEntry?> getCalendarEntry(DateTime date) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/calendar/$dateString'),
       headers: await _getHeaders(),
     );
@@ -235,7 +258,7 @@ class ApiService {
       DateTime date, Map<String, dynamic> data) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$_baseUrl/api/calendar/$dateString'),
       headers: await _getHeaders(),
       body: jsonEncode(data),
@@ -252,7 +275,7 @@ class ApiService {
       {required bool completed}) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$_baseUrl/api/calendar/$dateString/workout/complete'),
       headers: await _getHeaders(),
       body: jsonEncode({'workoutCompleted': completed}),
@@ -269,7 +292,7 @@ class ApiService {
       DateTime date, String nutritionId) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse(
           '$_baseUrl/api/calendar/$dateString/nutrition/$nutritionId/complete'),
       headers: await _getHeaders(),
@@ -287,7 +310,7 @@ class ApiService {
       int completedSets, DateTime date) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse(
           '$_baseUrl/api/progress/workout/$workoutId/exercises/$exerciseIndex/sets'),
       headers: await _getHeaders(),
@@ -300,7 +323,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getWorkoutProgress(String date) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/progress/workout/$date'),
       headers: await _getHeaders(),
     );
@@ -349,7 +372,7 @@ class ApiService {
   Stream<Map<String, int>> getNutritionProgressStream(String date) async* {
     while (true) {
       try {
-        final response = await http.get(
+        final response = await _client.get(
           Uri.parse('$_baseUrl/api/progress/nutrition/$date'),
           headers: await _getHeaders(),
         );
@@ -382,7 +405,7 @@ class ApiService {
   }
 
   Future<void> completeAllWorkout(String date) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$_baseUrl/api/progress/workout/$date/complete-all'),
       headers: await _getHeaders(),
     );
@@ -393,7 +416,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getNutritionProgress(String date) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/progress/nutrition/$date'),
       headers: await _getHeaders(),
     );
@@ -410,7 +433,7 @@ class ApiService {
   Future<void> updateNutritionMealProgress(String nutritionId, String mealKey,
       bool isCompleted, DateTime date) async {
     final dateString = DateFormat('yyyy-MM-dd').format(date);
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$_baseUrl/api/progress/nutrition/$nutritionId/meals/$mealKey'),
       headers: await _getHeaders(),
       body: jsonEncode({'completed': isCompleted, 'date': dateString}),
@@ -423,7 +446,7 @@ class ApiService {
   }
 
   Future<void> completeAllNutrition(String date) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$_baseUrl/api/progress/nutrition/$date/complete-all'),
       headers: await _getHeaders(),
     );
@@ -434,7 +457,7 @@ class ApiService {
   }
 
   Future<List<CalendarEntry>> getCalendarEntries() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('$_baseUrl/api/calendar/'),
       headers: await _getHeaders(),
     );

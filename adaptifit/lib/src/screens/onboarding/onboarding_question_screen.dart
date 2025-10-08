@@ -366,8 +366,11 @@ class _OnboardingQuestionScreenState
                       child: ElevatedButton(
                         onPressed: isNextEnabled() ? _nextQuestion : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.lightGrey2,
-                          disabledBackgroundColor: AppColors.lightGrey2,
+                          backgroundColor: isNextEnabled()
+                              ? AppColors.primaryGreen
+                              : AppColors.lightGrey2,
+                          disabledBackgroundColor:
+                              AppColors.lightGrey2.withOpacity(0.5),
                           minimumSize: const Size(double.infinity, 56),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(18),
@@ -381,7 +384,9 @@ class _OnboardingQuestionScreenState
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.darkText,
+                            color: isNextEnabled()
+                                ? Colors.white
+                                : AppColors.darkText.withOpacity(0.5),
                           ),
                         ),
                       ),

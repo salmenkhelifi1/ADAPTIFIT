@@ -29,7 +29,7 @@ class AuthService extends ChangeNotifier {
     required String firstName,
   }) async {
     try {
-      await _ref.read(apiServiceProvider).register(firstName, email, password);
+      await _ref.read(apiServiceProvider).register(firstName, email, password, password);
       await _loginAndSetUser(email, password);
     } catch (e) {
       debugPrint(e.toString());

@@ -6,7 +6,7 @@ part of 'today_plan_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$todayPlanNotifierHash() => r'a7c9d9427f5e33844813c5cd1f4b433e526d3d67';
+String _$todayPlanNotifierHash() => r'6febfff19515b91cee17fa3bcd6b8173e6ec6bce';
 
 /// See also [TodayPlanNotifier].
 @ProviderFor(TodayPlanNotifier)
