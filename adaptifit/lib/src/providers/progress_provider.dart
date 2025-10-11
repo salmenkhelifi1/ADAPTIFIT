@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:adaptifit/src/providers/calendar_provider.dart';
+import 'package:adaptifit/src/providers/weekly_progress_provider.dart';
 import 'package:intl/intl.dart';
 
 // Workout Progress
@@ -84,14 +85,28 @@ class WorkoutProgressNotifier extends StateNotifier<List<int>> {
 
   Future<void> _completeWorkout() async {
     try {
+      print('🏋️ [Progress Provider] Completing workout...');
       final date = DateTime.now();
       final dateString =
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      print(
+          '🏋️ [Progress Provider] API call to complete workout for date: $dateString');
       await ref.read(apiServiceProvider).completeAllWorkout(dateString);
+      print('🏋️ [Progress Provider] Workout completion API call successful');
+
+      print('🏋️ [Progress Provider] Force refreshing providers...');
       ref.invalidate(todayCalendarEntryProvider);
+      ref.invalidate(calendarEntriesProvider);
+
+      // Wait a moment for the invalidation to take effect
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Also refresh weekly progress directly
+      print('🏋️ [Progress Provider] Refreshing weekly progress...');
+      ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
     } catch (e) {
       // Handle error silently or log it
-      print('Error completing workout: $e');
+      print('❌ [Progress Provider] Error completing workout: $e');
     }
   }
 }
@@ -164,14 +179,28 @@ class NutritionProgressNotifier extends StateNotifier<Map<String, bool>> {
 
   Future<void> _completeNutrition() async {
     try {
+      print('🍽️ [Progress Provider] Completing nutrition...');
       final date = DateTime.now();
       final dateString =
           '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      print(
+          '🍽️ [Progress Provider] API call to complete nutrition for date: $dateString');
       await ref.read(apiServiceProvider).completeAllNutrition(dateString);
+      print('🍽️ [Progress Provider] Nutrition completion API call successful');
+
+      print('🍽️ [Progress Provider] Force refreshing providers...');
       ref.invalidate(todayCalendarEntryProvider);
+      ref.invalidate(calendarEntriesProvider);
+
+      // Wait a moment for the invalidation to take effect
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Also refresh weekly progress directly
+      print('🍽️ [Progress Provider] Refreshing weekly progress...');
+      ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
     } catch (e) {
       // Handle error silently or log it
-      print('Error completing nutrition: $e');
+      print('❌ [Progress Provider] Error completing nutrition: $e');
     }
   }
 }

@@ -2,6 +2,7 @@ import 'package:adaptifit/src/providers/calendar_provider.dart';
 import 'package:adaptifit/src/providers/plan_provider.dart';
 import 'package:adaptifit/src/providers/nutrition_provider.dart';
 import 'package:adaptifit/src/providers/today_plan_provider.dart';
+import 'package:adaptifit/src/providers/weekly_progress_provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -100,7 +101,7 @@ class PlanScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: _buildWeeklyProgress(),
+                child: _buildWeeklyProgress(ref),
               ),
               const SizedBox(height: 24),
               Padding(
@@ -176,9 +177,54 @@ class PlanScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWeeklyProgress() {
-    // Placeholder data as API endpoint is not available
-    return _buildWeeklyProgressCard(3, 5, 12, 21);
+  Widget _buildWeeklyProgress(WidgetRef ref) {
+    final weeklyProgressState = ref.watch(weeklyProgressStreamProvider);
+
+    print('🖥️ [Plan Screen] Building weekly progress UI...');
+
+    return weeklyProgressState.when(
+      data: (weeklyProgress) {
+        print(
+            '🖥️ [Plan Screen] Weekly progress data: ${weeklyProgress.completedWorkouts}/${weeklyProgress.totalWorkouts} workouts, ${weeklyProgress.completedMeals}/${weeklyProgress.totalMeals} meals');
+        print(
+            '🖥️ [Plan Screen] DISPLAYING: ${weeklyProgress.completedWorkouts}/${weeklyProgress.totalWorkouts} workouts, ${weeklyProgress.completedMeals}/${weeklyProgress.totalMeals} meals');
+        return _buildWeeklyProgressCard(
+          weeklyProgress.completedWorkouts,
+          weeklyProgress.totalWorkouts,
+          weeklyProgress.completedMeals,
+          weeklyProgress.totalMeals,
+        );
+      },
+      loading: () {
+        print('🖥️ [Plan Screen] Weekly progress loading...');
+        return _buildWeeklyProgressCard(0, 0, 0, 0);
+      },
+      error: (error, stackTrace) {
+        print('🖥️ [Plan Screen] Weekly progress stream error: $error');
+        // Fallback to regular provider if stream fails
+        final fallbackState = ref.watch(weeklyProgressProvider);
+        return fallbackState.when(
+          data: (weeklyProgress) {
+            print(
+                '🖥️ [Plan Screen] Fallback weekly progress data: ${weeklyProgress.completedWorkouts}/${weeklyProgress.totalWorkouts} workouts, ${weeklyProgress.completedMeals}/${weeklyProgress.totalMeals} meals');
+            return _buildWeeklyProgressCard(
+              weeklyProgress.completedWorkouts,
+              weeklyProgress.totalWorkouts,
+              weeklyProgress.completedMeals,
+              weeklyProgress.totalMeals,
+            );
+          },
+          loading: () {
+            print('🖥️ [Plan Screen] Fallback weekly progress loading...');
+            return _buildWeeklyProgressCard(0, 0, 0, 0);
+          },
+          error: (error, stackTrace) {
+            print('🖥️ [Plan Screen] Fallback weekly progress error: $error');
+            return _buildWeeklyProgressCard(0, 0, 0, 0);
+          },
+        );
+      },
+    );
   }
 
   Widget _buildUpcomingPlansList(BuildContext context, WidgetRef ref) {
