@@ -415,6 +415,23 @@ class ApiService {
     }
   }
 
+  Future<void> updateWorkoutExerciseProgress(String workoutId,
+      int exerciseIndex, bool isCompleted, DateTime date) async {
+    final dateString =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final response = await _client.put(
+      Uri.parse(
+          '$_baseUrl/api/progress/workout/$workoutId/exercises/$exerciseIndex/complete'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'completed': isCompleted, 'date': dateString}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to update workout exercise progress: ${response.body}');
+    }
+  }
+
   Future<Map<String, dynamic>> getNutritionProgress(String date) async {
     final response = await _client.get(
       // Corrected the endpoint to include '/date'
@@ -474,6 +491,25 @@ class ApiService {
       }
     } else {
       throw Exception('Failed to load calendar entries: ${response.body}');
+    }
+  }
+
+  // Weekly Progress
+  Future<Map<String, dynamic>> getWeeklyProgress(String startDate) async {
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/api/progress/weekly/$startDate'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        return data['data'];
+      } else {
+        throw Exception(data['message'] ?? 'Failed to get weekly progress');
+      }
+    } else {
+      throw Exception('Failed to get weekly progress: ${response.body}');
     }
   }
 }

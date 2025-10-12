@@ -39,6 +39,24 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
     }
   }
 
+  Future<void> _completeAllExercises() async {
+    try {
+      await ref.read(todayPlanNotifierProvider.notifier).completeAllExercises();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All exercises completed!')),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error completing all exercises: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to complete all exercises.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final workout = widget.workout;
@@ -85,6 +103,22 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
             const SizedBox(height: 16),
             _buildProgressCard(),
             const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _completeAllExercises,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              child: const Text('Complete All Exercises',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
+            ),
+            const SizedBox(height: 16),
             const Text('Exercises',
                 style: TextStyle(
                     fontWeight: FontWeight.w600,
@@ -104,9 +138,9 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
 
   Widget _buildProgressCard() {
     final todayPlanState = ref.watch(todayPlanNotifierProvider);
-    final progressCounts = todayPlanState.workoutProgressCount;
-    final totalCompletedSlots = progressCounts['completed']!;
-    final progress =
+    final setProgressCounts = todayPlanState.workoutProgressCount;
+    final totalCompletedSlots = setProgressCounts['completed']!;
+    final setProgress =
         totalSetSlots == 0 ? 0.0 : totalCompletedSlots / totalSetSlots;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -136,7 +170,7 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
-              value: progress,
+              value: setProgress,
               minHeight: 8,
               backgroundColor: AppColors.lightGrey2,
               valueColor:
@@ -149,7 +183,6 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
   }
 
   Widget _buildExerciseCard(int index, Exercise exercise) {
-    final setSlots = exercise.sets;
     final reps = exercise.reps;
     final rest = exercise.rest;
 
@@ -198,7 +231,7 @@ class _WorkoutDetailScreenState extends ConsumerState<WorkoutDetailScreen> {
             const Text('Sets:', style: TextStyle(color: AppColors.darkText)),
             const SizedBox(width: 10),
             ...List.generate(
-                setSlots, (slot) => _buildSetCheckbox(index, slot)),
+                exercise.sets, (slot) => _buildSetCheckbox(index, slot)),
           ]),
           if (exercise.instructions.isNotEmpty) ...[
             const SizedBox(height: 14),

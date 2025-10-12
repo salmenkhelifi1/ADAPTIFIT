@@ -1,19 +1,25 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:adaptifit/src/providers/calendar_provider.dart';
-import 'package:adaptifit/src/providers/nutrition_provider.dart';
 import 'package:adaptifit/src/providers/today_plan_provider.dart';
+import 'package:adaptifit/src/providers/api_service_provider.dart';
+import 'package:adaptifit/src/providers/plan_provider.dart';
+import 'package:intl/intl.dart';
 
+/// Weekly progress data structure that tracks workouts and meals for the current week
+/// This provides dynamic data from the database showing real progress
 class WeeklyProgress {
-  final int completedWorkouts;
-  final int totalWorkouts;
-  final int completedMeals;
-  final int totalMeals;
+  final int
+      completedWorkouts; // Number of completed workouts in the week (all sets finished)
+  final int totalWorkouts; // Total number of workouts planned in the week
+  final int completedMealDays; // Number of days where all meals are completed
+  final int totalMealDays; // Total number of days with meals planned
 
   WeeklyProgress({
     required this.completedWorkouts,
     required this.totalWorkouts,
-    required this.completedMeals,
-    required this.totalMeals,
+    required this.completedMealDays,
+    required this.totalMealDays,
   });
 }
 
@@ -28,20 +34,61 @@ class WeeklyProgressNotifier extends StateNotifier<AsyncValue<WeeklyProgress>> {
 
       print('🔄 [Weekly Progress] Starting calculation...');
 
-      // Get calendar entries
+      // Calculate the start of the current week
+      final now = DateTime.now();
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final startDateString = DateFormat('yyyy-MM-dd').format(startOfWeek);
+
+      print('📅 [Weekly Progress] Week start date: $startDateString');
+
+      final api = ref.read(apiServiceProvider);
+
+      // Get weekly workout progress from the dedicated API endpoint
+      Map<String, dynamic> weeklyWorkoutData = {};
+      try {
+        weeklyWorkoutData = await api.getWeeklyProgress(startDateString);
+        print('🏋️ [Weekly Progress] Got workout data from API');
+      } catch (e) {
+        print('⚠️ [Weekly Progress] Could not get weekly workout data: $e');
+      }
+
+      // Get calendar entries for meal data (since there's no weekly nutrition endpoint)
       final calendarEntries = await ref.read(calendarEntriesProvider.future);
       print(
           '📅 [Weekly Progress] Total calendar entries: ${calendarEntries.length}');
 
-      // Calculate the start and end of the current week
-      final now = DateTime.now();
-      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-      final endOfWeek = startOfWeek.add(const Duration(days: 6));
+      // Calculate workout progress from API data
+      int completedWorkouts = 0;
+      int totalWorkouts = 0;
 
-      print(
-          '📅 [Weekly Progress] Week range: ${startOfWeek.toString().split(' ')[0]} to ${endOfWeek.toString().split(' ')[0]}');
+      if (weeklyWorkoutData.containsKey('weekData')) {
+        final weekData = weeklyWorkoutData['weekData'] as List? ?? [];
+        for (var dayData in weekData) {
+          final hasWorkout = dayData['hasWorkout'] as bool? ?? false;
+          final totalCompletedSets = dayData['totalCompletedSets'] as int? ?? 0;
+          final totalPlannedSets = dayData['totalPlannedSets'] as int? ?? 0;
+
+          if (hasWorkout && totalPlannedSets > 0) {
+            totalWorkouts++;
+            // Workout is completed only when ALL sets are finished
+            if (totalCompletedSets == totalPlannedSets) {
+              completedWorkouts++;
+              print(
+                  '   🏋️ ${dayData['date']}: COMPLETED ($totalCompletedSets/$totalPlannedSets sets)');
+            } else {
+              print(
+                  '   🏋️ ${dayData['date']}: INCOMPLETE ($totalCompletedSets/$totalPlannedSets sets)');
+            }
+          }
+        }
+      }
+
+      // Calculate meal progress from calendar entries
+      int completedMealDays = 0;
+      int totalMealDays = 0;
 
       // Filter entries for the current week
+      final endOfWeek = startOfWeek.add(const Duration(days: 6));
       final weeklyEntries = calendarEntries.where((entry) {
         final entryDate =
             DateTime(entry.date.year, entry.date.month, entry.date.day);
@@ -55,55 +102,47 @@ class WeeklyProgressNotifier extends StateNotifier<AsyncValue<WeeklyProgress>> {
             (entryDate.isAfter(startDate) && entryDate.isBefore(endDate));
       }).toList();
 
-      print(
-          '📅 [Weekly Progress] Weekly entries found: ${weeklyEntries.length}');
-
-      // Calculate workout progress with real data
-      int completedWorkouts = 0;
-      int totalWorkouts = 0;
-      int completedMeals = 0;
-      int totalMeals = 0;
-
       for (final entry in weeklyEntries) {
-        print(
-            '📅 [Weekly Progress] Processing entry for ${entry.date.toString().split(' ')[0]}');
-        print('   - Workout ID: ${entry.workoutId}');
-        print('   - Workout Completed: ${entry.workoutCompleted}');
-        print('   - Nutrition IDs: ${entry.nutritionIds}');
-        print('   - Completed Meals: ${entry.completedMeals}');
-        print('   - Completed Nutrition IDs: ${entry.completedNutritionIds}');
-
-        // Count workouts with real data
-        if (entry.workoutId.isNotEmpty && entry.planId.isNotEmpty) {
-          totalWorkouts++;
-          print('   ✅ Added to total workouts');
-          if (entry.workoutCompleted) {
-            completedWorkouts++;
-            print('   ✅ Added to completed workouts');
-          }
-        }
-
-        // Count meals with real nutrition data
         if (entry.nutritionIds.isNotEmpty) {
+          totalMealDays++;
+
+          // Check if all meals for the day are completed
+          // We need to get the nutrition plan to see how many meals it has
+          bool areAllMealsCompleted = false;
+          
           try {
-            // Get actual nutrition data to count real meals
-            for (final nutritionId in entry.nutritionIds) {
-              final nutrition =
-                  await ref.read(nutritionProvider(nutritionId).future);
-              totalMeals +=
-                  nutrition.meals.length; // Real meal count from nutrition plan
-              print(
-                  '   🍽️ Nutrition plan $nutritionId has ${nutrition.meals.length} meals');
+            // Get the nutrition plan to count total meals
+            final nutrition = await ref.read(planNutritionProvider(entry.planId).future);
+            
+            if (nutrition != null) {
+              // Count total meals in the nutrition plan
+              int totalMeals = nutrition.meals.length;
+              int completedMeals = entry.completedMeals.length;
+              
+              // All meals are completed only when ALL meals for the day are done
+              areAllMealsCompleted = totalMeals > 0 && completedMeals == totalMeals;
+            } else {
+              // If we can't find the nutrition plan, use fallback
+              areAllMealsCompleted = entry.nutritionIds.every((id) => 
+                  entry.completedNutritionIds.contains(id));
             }
-            completedMeals +=
-                entry.completedMeals.length; // Real completed meals
-            print('   🍽️ Completed meals: ${entry.completedMeals.length}');
+            
+            if (nutrition != null) {
+              print('   🍽️ ${entry.date.toString().split(' ')[0]}: ${entry.completedMeals.length}/${nutrition.meals.length} meals - ${areAllMealsCompleted ? "ALL COMPLETED" : "INCOMPLETE"}');
+            } else {
+              print('   🍽️ ${entry.date.toString().split(' ')[0]}: Using fallback - ${areAllMealsCompleted ? "COMPLETED" : "INCOMPLETE"}');
+            }
           } catch (e) {
-            // Fallback to estimated count if nutrition data is not available
-            totalMeals += entry.nutritionIds.length * 3;
-            completedMeals += entry.completedMeals.length;
-            print(
-                '   ⚠️ Fallback: ${entry.nutritionIds.length * 3} estimated meals');
+            print('   ⚠️ Could not get nutrition plan data: $e');
+            // Fallback: check if all nutrition IDs are completed
+            areAllMealsCompleted = entry.nutritionIds.every((id) => 
+                entry.completedNutritionIds.contains(id));
+            print('   🍽️ ${entry.date.toString().split(' ')[0]}: Using fallback - ${areAllMealsCompleted ? "COMPLETED" : "INCOMPLETE"}');
+          }
+
+          if (areAllMealsCompleted) {
+            completedMealDays++;
+            print('   ✅ Added to completed meal days');
           }
         }
       }
@@ -111,30 +150,14 @@ class WeeklyProgressNotifier extends StateNotifier<AsyncValue<WeeklyProgress>> {
       print('📊 [Weekly Progress] Final counts:');
       print('   - Completed Workouts: $completedWorkouts');
       print('   - Total Workouts: $totalWorkouts');
-      print('   - Completed Meals: $completedMeals');
-      print('   - Total Meals: $totalMeals');
-
-      // Compare with API data summary
-      final apiCompletedWorkouts =
-          calendarEntries.where((e) => e.workoutCompleted).length;
-      final apiTotalWorkouts =
-          calendarEntries.where((e) => e.workoutId.isNotEmpty).length;
-      final apiCompletedMeals = calendarEntries.fold<int>(
-          0, (sum, e) => sum + e.completedMeals.length);
-
-      print('🔍 [Weekly Progress] Comparison with API data:');
-      print(
-          '   - API Completed Workouts: $apiCompletedWorkouts vs Weekly: $completedWorkouts');
-      print(
-          '   - API Total Workouts: $apiTotalWorkouts vs Weekly: $totalWorkouts');
-      print(
-          '   - API Completed Meals: $apiCompletedMeals vs Weekly: $completedMeals');
+      print('   - Completed Meal Days: $completedMealDays');
+      print('   - Total Meal Days: $totalMealDays');
 
       final weeklyProgress = WeeklyProgress(
         completedWorkouts: completedWorkouts,
         totalWorkouts: totalWorkouts,
-        completedMeals: completedMeals,
-        totalMeals: totalMeals,
+        completedMealDays: completedMealDays,
+        totalMealDays: totalMealDays,
       );
 
       state = AsyncValue.data(weeklyProgress);
@@ -144,6 +167,11 @@ class WeeklyProgressNotifier extends StateNotifier<AsyncValue<WeeklyProgress>> {
       print('❌ [Weekly Progress] Stack trace: $stackTrace');
       state = AsyncValue.error(e, stackTrace);
     }
+  }
+
+  // Public method for manual refresh
+  Future<void> refresh() async {
+    await calculateWeeklyProgress();
   }
 }
 
@@ -176,8 +204,6 @@ final weeklyProgressProvider =
 // Create a stream provider for real-time updates
 final weeklyProgressStreamProvider =
     StreamProvider<WeeklyProgress>((ref) async* {
-  print('🔄 [Weekly Progress Stream] Starting stream...');
-
   // Initial calculation
   final notifier = ref.read(weeklyProgressProvider.notifier);
   await notifier.calculateWeeklyProgress();
@@ -188,13 +214,19 @@ final weeklyProgressStreamProvider =
     yield currentState.value!;
   }
 
-  // Listen for changes and yield updates more frequently
-  await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
-    print('🔄 [Weekly Progress Stream] Periodic update...');
-    await notifier.calculateWeeklyProgress();
-    final newState = ref.read(weeklyProgressProvider);
-    if (newState.hasValue) {
-      yield newState.value!;
+  // Create a stream that emits whenever the weekly progress changes
+  // This will be triggered by the listeners in the weeklyProgressProvider
+  final controller = StreamController<WeeklyProgress>();
+
+  // Listen to the weekly progress provider state changes
+  ref.listen(weeklyProgressProvider, (previous, next) {
+    if (next.hasValue && !controller.isClosed) {
+      controller.add(next.value!);
     }
+  });
+
+  // Yield from the controller stream
+  await for (final progress in controller.stream) {
+    yield progress;
   }
 });

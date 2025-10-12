@@ -18,6 +18,7 @@ class TodayPlanState {
   final AsyncValue<Nutrition?> nutrition;
   final AsyncValue<Map<int, int>> workoutProgress;
   final AsyncValue<Map<String, bool>> nutritionProgress;
+  final AsyncValue<Map<int, bool>> exerciseProgress;
 
   const TodayPlanState({
     this.entry = const AsyncLoading(),
@@ -25,6 +26,7 @@ class TodayPlanState {
     this.nutrition = const AsyncLoading(),
     this.workoutProgress = const AsyncLoading(),
     this.nutritionProgress = const AsyncLoading(),
+    this.exerciseProgress = const AsyncLoading(),
   });
 
   TodayPlanState copyWith({
@@ -33,6 +35,7 @@ class TodayPlanState {
     AsyncValue<Nutrition?>? nutrition,
     AsyncValue<Map<int, int>>? workoutProgress,
     AsyncValue<Map<String, bool>>? nutritionProgress,
+    AsyncValue<Map<int, bool>>? exerciseProgress,
   }) {
     return TodayPlanState(
       entry: entry ?? this.entry,
@@ -40,6 +43,7 @@ class TodayPlanState {
       nutrition: nutrition ?? this.nutrition,
       workoutProgress: workoutProgress ?? this.workoutProgress,
       nutritionProgress: nutritionProgress ?? this.nutritionProgress,
+      exerciseProgress: exerciseProgress ?? this.exerciseProgress,
     );
   }
 
@@ -56,6 +60,25 @@ class TodayPlanState {
         if (total == 0) return false;
         final completed =
             progress.values.fold<int>(0, (acc, completed) => acc + completed);
+        return completed == total;
+      },
+      loading: () => false,
+      error: (_, __) => false,
+    );
+  }
+
+  /// Check if all exercises are completed (similar to meal completion)
+  bool get areAllExercisesCompleted {
+    return exerciseProgress.when(
+      data: (progress) {
+        final total = workout.when(
+          data: (workout) => workout?.exercises.length ?? 0,
+          loading: () => 0,
+          error: (_, __) => 0,
+        );
+        if (total == 0) return false;
+        final completed =
+            progress.values.where((isCompleted) => isCompleted).length;
         return completed == total;
       },
       loading: () => false,
@@ -106,6 +129,24 @@ class TodayPlanState {
       data: (progress) {
         final total = nutrition.when(
           data: (nutrition) => nutrition?.meals.length ?? 0,
+          loading: () => 0,
+          error: (_, __) => 0,
+        );
+        final completed =
+            progress.values.where((isCompleted) => isCompleted).length;
+        return {'completed': completed, 'total': total};
+      },
+      loading: () => const {'completed': 0, 'total': 0},
+      error: (_, __) => const {'completed': 0, 'total': 0},
+    );
+  }
+
+  /// Get total exercise progress
+  Map<String, int> get exerciseProgressCount {
+    return exerciseProgress.when(
+      data: (progress) {
+        final total = workout.when(
+          data: (workout) => workout?.exercises.length ?? 0,
           loading: () => 0,
           error: (_, __) => 0,
         );
@@ -208,6 +249,8 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
         workoutProgress: AsyncData(_parseWorkoutProgress(progressData)),
         nutritionProgress: AsyncData(_parseNutritionProgressWithFallback(
             nutritionProgressData, nutrition, calendarEntry)),
+        exerciseProgress:
+            AsyncData(_parseExerciseProgress(workout, calendarEntry)),
       );
     } catch (e, stack) {
       // IMPORTANT: If anything fails, update the state with an error.
@@ -277,6 +320,26 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
       }
     }
     return nutritionProgress;
+  }
+
+  Map<int, bool> _parseExerciseProgress(
+      Workout? workout, CalendarEntry? entry) {
+    final exerciseProgress = <int, bool>{};
+
+    if (workout != null && entry != null) {
+      // Initialize all exercises as not completed
+      for (int i = 0; i < workout.exercises.length; i++) {
+        exerciseProgress[i] = false;
+      }
+
+      // Mark completed exercises as true from calendar entry
+      for (final completedExerciseIndex in entry.completedExercises) {
+        if (exerciseProgress.containsKey(completedExerciseIndex)) {
+          exerciseProgress[completedExerciseIndex] = true;
+        }
+      }
+    }
+    return exerciseProgress;
   }
 
   // Public method for manual refresh (e.g., pull-to-refresh)
@@ -350,6 +413,50 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
     ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
   }
 
+  Future<void> completeAllExercises() async {
+    print('🏋️ [Today Plan] Completing all exercises...');
+    final api = ref.read(apiServiceProvider);
+    final todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    print(
+        '🏋️ [Today Plan] API call to complete all exercises for date: $todayString');
+    await api.completeAllWorkout(todayString);
+    print('🏋️ [Today Plan] Exercise completion API call successful');
+
+    // Optimistically update both exercise progress and set progress to show all completed
+    final workout = state.workout.value;
+    if (workout != null) {
+      // Update exercise progress
+      final completedExerciseProgress = <int, bool>{};
+      for (int i = 0; i < workout.exercises.length; i++) {
+        completedExerciseProgress[i] = true;
+      }
+
+      // Update set progress to maintain backward compatibility
+      final completedSetProgress = <int, int>{};
+      for (int i = 0; i < workout.exercises.length; i++) {
+        completedSetProgress[i] = workout.exercises[i].sets;
+      }
+
+      state = state.copyWith(
+        exerciseProgress: AsyncData(completedExerciseProgress),
+        workoutProgress: AsyncData(completedSetProgress),
+      );
+      print(
+          '🏋️ [Today Plan] Updated exercise and set progress optimistically');
+    }
+
+    // Force refresh calendar entries to get latest data
+    print('🏋️ [Today Plan] Force refreshing calendar entries...');
+    ref.invalidate(calendarEntriesProvider);
+
+    // Wait a moment for the invalidation to take effect
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Also refresh weekly progress directly
+    print('🏋️ [Today Plan] Refreshing weekly progress...');
+    ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
+  }
+
   Future<void> updateSetProgress(
       int exerciseIndex, int newCompletedSets) async {
     final api = ref.read(apiServiceProvider);
@@ -413,6 +520,57 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
       ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
     } catch (e) {
       debugPrint("Failed to update meal progress: $e");
+      // Revert optimistic update on error
+      await _fetchAllData();
+    }
+  }
+
+  Future<void> updateExerciseProgress(
+      int exerciseIndex, bool isCompleted) async {
+    final api = ref.read(apiServiceProvider);
+    final workout = state.workout.value;
+    final entry = state.entry.value;
+    if (workout == null || entry == null) return;
+
+    print(
+        '🏋️ [Today Plan] Updating exercise progress: $exerciseIndex = $isCompleted');
+
+    // Optimistic Update: Update the UI instantly
+    final currentProgress =
+        Map<int, bool>.from(state.exerciseProgress.value ?? {});
+    currentProgress[exerciseIndex] = isCompleted;
+    state = state.copyWith(exerciseProgress: AsyncData(currentProgress));
+
+    // Make the API call to update the calendar entry with the new list of completed exercises.
+    try {
+      final allCompletedExercises = currentProgress.entries
+          .where((e) => e.value)
+          .map((e) => e.key)
+          .toList();
+
+      // The 'workoutCompleted' field is also required by the API when updating exercises.
+      // We can derive it or just pass the current value.
+      final isWorkoutCompleted = state.areAllExercisesCompleted;
+
+      await api.updateCalendarEntry(entry.date, {
+        'completedExercises': allCompletedExercises,
+        'workoutCompleted': isWorkoutCompleted
+      });
+
+      print('🏋️ [Today Plan] Exercise progress updated successfully');
+
+      // Force refresh calendar entries to get latest data
+      print('🏋️ [Today Plan] Force refreshing calendar entries...');
+      ref.invalidate(calendarEntriesProvider);
+
+      // Wait a moment for the invalidation to take effect
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Also refresh weekly progress directly
+      print('🏋️ [Today Plan] Refreshing weekly progress...');
+      ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
+    } catch (e) {
+      debugPrint("Failed to update exercise progress: $e");
       // Revert optimistic update on error
       await _fetchAllData();
     }

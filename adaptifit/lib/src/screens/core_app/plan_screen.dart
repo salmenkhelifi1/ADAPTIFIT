@@ -180,48 +180,30 @@ class PlanScreen extends ConsumerWidget {
   Widget _buildWeeklyProgress(WidgetRef ref) {
     final weeklyProgressState = ref.watch(weeklyProgressStreamProvider);
 
-    print('🖥️ [Plan Screen] Building weekly progress UI...');
-
     return weeklyProgressState.when(
       data: (weeklyProgress) {
-        print(
-            '🖥️ [Plan Screen] Weekly progress data: ${weeklyProgress.completedWorkouts}/${weeklyProgress.totalWorkouts} workouts, ${weeklyProgress.completedMeals}/${weeklyProgress.totalMeals} meals');
-        print(
-            '🖥️ [Plan Screen] DISPLAYING: ${weeklyProgress.completedWorkouts}/${weeklyProgress.totalWorkouts} workouts, ${weeklyProgress.completedMeals}/${weeklyProgress.totalMeals} meals');
         return _buildWeeklyProgressCard(
           weeklyProgress.completedWorkouts,
           weeklyProgress.totalWorkouts,
-          weeklyProgress.completedMeals,
-          weeklyProgress.totalMeals,
+          weeklyProgress.completedMealDays,
+          weeklyProgress.totalMealDays,
         );
       },
-      loading: () {
-        print('🖥️ [Plan Screen] Weekly progress loading...');
-        return _buildWeeklyProgressCard(0, 0, 0, 0);
-      },
+      loading: () => _buildWeeklyProgressCard(0, 0, 0, 0),
       error: (error, stackTrace) {
-        print('🖥️ [Plan Screen] Weekly progress stream error: $error');
         // Fallback to regular provider if stream fails
         final fallbackState = ref.watch(weeklyProgressProvider);
         return fallbackState.when(
           data: (weeklyProgress) {
-            print(
-                '🖥️ [Plan Screen] Fallback weekly progress data: ${weeklyProgress.completedWorkouts}/${weeklyProgress.totalWorkouts} workouts, ${weeklyProgress.completedMeals}/${weeklyProgress.totalMeals} meals');
             return _buildWeeklyProgressCard(
               weeklyProgress.completedWorkouts,
               weeklyProgress.totalWorkouts,
-              weeklyProgress.completedMeals,
-              weeklyProgress.totalMeals,
+              weeklyProgress.completedMealDays,
+              weeklyProgress.totalMealDays,
             );
           },
-          loading: () {
-            print('🖥️ [Plan Screen] Fallback weekly progress loading...');
-            return _buildWeeklyProgressCard(0, 0, 0, 0);
-          },
-          error: (error, stackTrace) {
-            print('🖥️ [Plan Screen] Fallback weekly progress error: $error');
-            return _buildWeeklyProgressCard(0, 0, 0, 0);
-          },
+          loading: () => _buildWeeklyProgressCard(0, 0, 0, 0),
+          error: (error, stackTrace) => _buildWeeklyProgressCard(0, 0, 0, 0),
         );
       },
     );
@@ -343,9 +325,9 @@ class PlanScreen extends ConsumerWidget {
   Widget _buildWorkoutCard(BuildContext context, Workout workout,
       CalendarEntry calendar, WidgetRef ref) {
     final todayPlanState = ref.watch(todayPlanNotifierProvider);
-    final progressCounts = todayPlanState.workoutProgressCount;
-    final totalSetSlots = progressCounts['total']!;
-    final totalCompletedSlots = progressCounts['completed']!;
+    final setProgressCounts = todayPlanState.workoutProgressCount;
+    final totalSetSlots = setProgressCounts['total']!;
+    final totalCompletedSlots = setProgressCounts['completed']!;
     final bool isWorkoutCompleted = todayPlanState.isWorkoutCompleted;
 
     const primaryGreen = Color(0xFF1EB955);
@@ -577,8 +559,10 @@ class PlanScreen extends ConsumerWidget {
     );
   }
 
+  /// Builds the weekly progress card showing workouts and meals progress
+  /// Data is dynamically fetched from the database and updates in real-time
   Widget _buildWeeklyProgressCard(int completedWorkouts, int totalWorkouts,
-      int completedMeals, int totalMeals) {
+      int completedMealDays, int totalMealDays) {
     return _buildStyledContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,17 +577,17 @@ class PlanScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // Pass the green text color for Workouts
+              // Workouts section - completed only when all sets are 100% finished
               _buildProgressItem(
                   value: completedWorkouts,
                   total: totalWorkouts,
                   label: 'Workouts',
                   color: AppColors.primaryGreen,
                   progressTextColor: AppColors.primaryGreen),
-              // Pass the blue text color for Meals
+              // Meals section - completed only when all meals for the day are finished
               _buildProgressItem(
-                  value: completedMeals,
-                  total: totalMeals,
+                  value: completedMealDays,
+                  total: totalMealDays,
                   label: 'Meals',
                   color: AppColors.secondaryBlue,
                   progressTextColor: AppColors.secondaryBlue),
