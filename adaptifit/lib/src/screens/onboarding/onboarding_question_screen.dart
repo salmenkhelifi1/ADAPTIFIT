@@ -78,7 +78,7 @@ class _OnboardingQuestionScreenState
       title: 'Do you have any injuries or physical limitations?',
       subtitle:
           'This helps us adapt your plan so you can train safely and effectively.',
-      type: QuestionType.textInput,
+      type: QuestionType.textArea,
       answerKey: 'injuries',
       placeholders: ['e.g., shoulder impingement, knee pain, etc.'],
     ),
@@ -123,14 +123,15 @@ class _OnboardingQuestionScreenState
     // 7. Diet type/preferences
     OnboardingQuestion(
       title: 'Do you follow a specific diet or have nutrition preferences?',
-      subtitle:
-          'If you skip, we’ll create only your workout plan and hide nutrition sections in the app.',
+      subtitle: "This helps us personalize your plan around your lifestyle. "
+          "Add your diet style, macros, or calories if you'd like. "
+          "If you skip, we'll create only your workout plan and hide nutrition sections in the app.",
       type: QuestionType.diet,
       answerKey: 'diet',
       placeholders: [
-        'e.g., high protein, vegetarian, keto',
-        '2000 kcal or macros in grams',
-        'Enter custom dietary preferences'
+        'e.g., high protein, vegetarian, keto, plant-based', // Diet Style
+        'e.g., 2000 kcal', // Daily Calories
+        'e.g., 150g carbs, 100g protein, 50g fat', // Daily Macros
       ],
     ),
     // 8. Time per session
@@ -153,7 +154,7 @@ class _OnboardingQuestionScreenState
     OnboardingQuestion(
       title: 'What equipment do you have access to?',
       subtitle: 'List all the equipment you have available for your workouts.',
-      type: QuestionType.textInput,
+      type: QuestionType.textArea,
       answerKey: 'equipmentList',
       placeholders: ['e.g., dumbbells, resistance bands, treadmill, etc.'],
     ),
@@ -314,22 +315,22 @@ class _OnboardingQuestionScreenState
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.neutralGray,
       body: SafeArea(
         top: false,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
+            if (_currentQuestionIndex == 0) const SizedBox(height: 16),
             Expanded(
               child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(36),
-                    topRight: Radius.circular(36),
-                  ),
+                  borderRadius: BorderRadius.circular(36),
                 ),
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Column(
                   children: [
                     Expanded(
@@ -411,8 +412,6 @@ class _OnboardingQuestionScreenState
         child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 28),
-            SizedBox(height: 20),
             Text(
               "Let's Begin",
               style: TextStyle(
@@ -482,67 +481,104 @@ class _OnboardingQuestionScreenState
         (provider.answers[question.answerKey] as List?)?.cast<String>() ?? [];
 
     return Column(
-      children: question.options.map((option) {
-        final isSelected = selectedOptions.contains(option);
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: GestureDetector(
-            onTap: () {
-              final newSelection = List<String>.from(selectedOptions);
-              if (isSelected) {
-                newSelection.remove(option);
-              } else {
-                newSelection.add(option);
-              }
-              _updateProviderAnswer(question.answerKey, newSelection);
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected
-                      ? AppColors.primaryGreen
-                      : AppColors.timestampGray,
-                  width: 1.5,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    option,
-                    style: const TextStyle(
-                      color: AppColors.darkText,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+      children: [
+        ...question.options.map((option) {
+          final isSelected = selectedOptions.contains(option);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: GestureDetector(
+              onTap: () {
+                final newSelection = List<String>.from(selectedOptions);
+                if (isSelected) {
+                  newSelection.remove(option);
+                } else {
+                  newSelection.add(option);
+                }
+                _updateProviderAnswer(question.answerKey, newSelection);
+              },
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primaryGreen
+                        : AppColors.timestampGray,
+                    width: 1.5,
                   ),
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected
-                            ? AppColors.primaryGreen
-                            : AppColors.subtitleGray,
-                        width: 2,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      option,
+                      style: const TextStyle(
+                        color: AppColors.darkText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    child: isSelected
-                        ? const Icon(Icons.check,
-                            size: 16, color: AppColors.primaryGreen)
-                        : null,
-                  ),
-                ],
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primaryGreen
+                              : AppColors.subtitleGray,
+                          width: 2,
+                        ),
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check,
+                              size: 16, color: AppColors.primaryGreen)
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+        if (selectedOptions.contains('Other')) ...[
+          const SizedBox(height: 16),
+          TextField(
+            controller: _textController,
+            onChanged: (text) {
+              // Create a mutable copy of the selected options
+              final updatedSelection = List<String>.from(selectedOptions);
+              // Find the original 'Other' placeholder
+              final otherIndex = updatedSelection.indexOf('Other');
+              if (otherIndex != -1) {
+                // Remove any previous custom 'Other' value if it exists
+                updatedSelection.removeWhere((item) =>
+                    !question.options.contains(item) && item != 'Other');
+                // Add the new custom text
+                if (text.isNotEmpty) updatedSelection.add(text);
+              }
+              _updateProviderAnswer(question.answerKey, updatedSelection);
+            },
+            decoration: InputDecoration(
+              hintText: 'Please specify your goal',
+              filled: true,
+              fillColor: AppColors.neutralGray.withOpacity(0.5),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: AppColors.primaryGreen, width: 1.5),
               ),
             ),
           ),
-        );
-      }).toList(),
+        ],
+      ],
     );
   }
 
@@ -673,39 +709,57 @@ class _OnboardingQuestionScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text("Diet Style", style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
         TextField(
           controller: _dietStyleController,
+          maxLines: 2,
           onChanged: (text) => _updateProviderAnswer(question.answerKey, {
             'style': text,
             'macros': _dietMacrosController.text,
             'custom': _dietCustomController.text,
           }),
           decoration: inputDecoration.copyWith(
-            hintText: question.placeholders[0],
+            hintText: question.placeholders.isNotEmpty
+                ? question.placeholders[0]
+                : 'e.g., high protein, vegetarian, keto',
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
+        const Text("Daily Calories (optional)",
+            style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
         TextField(
           controller: _dietMacrosController,
+          maxLines: 2,
+          keyboardType: TextInputType.text,
           onChanged: (text) => _updateProviderAnswer(question.answerKey, {
             'style': _dietStyleController.text,
             'macros': text,
             'custom': _dietCustomController.text,
           }),
           decoration: inputDecoration.copyWith(
-            hintText: question.placeholders[1],
+            hintText: question.placeholders.length > 1
+                ? question.placeholders[1]
+                : 'e.g., 2000 kcal',
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
+        const Text("Daily Macros (optional)",
+            style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
         TextField(
           controller: _dietCustomController,
+          maxLines: 3,
           onChanged: (text) => _updateProviderAnswer(question.answerKey, {
             'style': _dietStyleController.text,
             'macros': _dietMacrosController.text,
             'custom': text,
           }),
           decoration: inputDecoration.copyWith(
-            hintText: question.placeholders[2],
+            hintText: question.placeholders.length > 2
+                ? question.placeholders[2]
+                : 'e.g., 150g carbs, 100g protein, 50g fat',
           ),
         ),
         const SizedBox(height: 20),

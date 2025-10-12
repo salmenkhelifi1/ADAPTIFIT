@@ -3,6 +3,7 @@ import 'package:adaptifit/src/providers/auth_provider.dart'; // Assuming this is
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:adaptifit/src/screens/core_app/main_scaffold.dart';
 
 // You might need to adjust this provider import based on your project structure
@@ -86,13 +87,12 @@ class SummaryScreen extends ConsumerWidget {
     final answers = ref.watch(onboardingProvider).answers;
 
     // --- UI Colors ---
-    const scaffoldBgColor = Color(0xFFF4F9F4);
     const buttonColor = Color(0xFF28A745); // A nice, vibrant green
     const cardColor = Colors.white;
     const textColor = Colors.black87;
 
     return Scaffold(
-      backgroundColor: scaffoldBgColor,
+      backgroundColor: AppColors.neutralGray,
       appBar: AppBar(
         // Makes AppBar blend with the background
         backgroundColor: Colors.transparent,
@@ -131,12 +131,32 @@ class SummaryScreen extends ConsumerWidget {
                     // Dynamically create rows from your provider data
                     ...answers.entries.map((entry) {
                       // This handles if a value is a list (like goals) or a single item
-                      String valueText;
-                      if (entry.value is List) {
+                      String valueText = '';
+                      // Skip empty or irrelevant answers
+                      if (entry.value == null ||
+                          (entry.value is String && entry.value.isEmpty) ||
+                          (entry.value is List && entry.value.isEmpty)) {
+                        return const SizedBox.shrink();
+                      }
+
+                      if (entry.key == 'diet' && entry.value is Map) {
+                        final dietMap = entry.value as Map;
+                        if (dietMap['skipped'] == true) {
+                          valueText = 'Skipped';
+                        } else {
+                          final parts = [
+                            dietMap['style'],
+                            dietMap['macros'],
+                            dietMap['custom']
+                          ].where((v) => v != null && v.isNotEmpty).toList();
+                          valueText = parts.join('\n');
+                        }
+                      } else if (entry.value is List) {
                         valueText = (entry.value as List).join('\n');
                       } else {
                         valueText = entry.value.toString();
                       }
+                      if (valueText.isEmpty) return const SizedBox.shrink();
                       // Use our helper to create the row
                       return _buildProfileRow(
                         // A simple way to format the key (e.g., 'fitnessGoal' -> 'Fitness Goal')
