@@ -109,15 +109,16 @@ class _OnboardingQuestionScreenState
     ),
     // 6. Activity level
     OnboardingQuestion(
-      title: 'What is your current activity level?',
-      subtitle: 'This helps us gauge your starting point.',
+      title: "What's your activity level outside of workouts?",
+      subtitle:
+          'This helps us adjust your plan based on how active your lifestyle is day-to-day.',
       type: QuestionType.singleChoice,
       answerKey: 'activityLevel',
       options: [
-        'Sedentary',
-        'Lightly Active',
-        'Moderately Active',
-        'Very Active'
+        'Sedentary (mostly sitting, little movement)',
+        'Light (light daily activity, walking, household chores)',
+        'Moderate (on your feet often, active job, regular movement)',
+        'Very active (physically demanding job, high daily movement)'
       ],
     ),
     // 7. Diet type/preferences
@@ -160,16 +161,15 @@ class _OnboardingQuestionScreenState
     ),
     // 11. Preferred workout split
     OnboardingQuestion(
-      title: 'What is your preferred workout split?',
-      subtitle:
-          'A workout split is how you organize your workouts throughout the week.',
+      title: 'Do you prefer full-body workouts or a training split?',
+      subtitle: 'Choose the workout style that fits your training preference.',
       type: QuestionType.singleChoice,
       answerKey: 'workoutSplit',
       options: [
-        'Full Body',
-        'Upper/Lower',
-        'Push/Pull/Legs',
-        'Body Part Split'
+        'Full-body workouts',
+        'Training split (push/pull/legs, upper/lower)',
+        'Hybrid (Endurance + Strength)',
+        'Other (Custom)'
       ],
     ),
   ];

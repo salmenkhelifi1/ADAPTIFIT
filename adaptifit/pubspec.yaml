@@ -40,10 +40,10 @@ flutter:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/adaptifit_icon.jpeg"
+  image_path: "assets/images/Adaptifit logo.png"
 
 flutter_native_splash:
-  color: "0xFF1DB954"
-  image: assets/images/adaptifit_icon.jpeg
+  color: "#1EB955"
+  image: assets/images/Adaptifit logo.png
   android: true
   ios: true

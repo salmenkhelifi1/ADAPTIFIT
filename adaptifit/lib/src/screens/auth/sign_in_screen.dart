@@ -76,7 +76,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 children: <Widget>[
                   const Spacer(flex: 2),
                   Image.asset(
-                    'assets/images/Icon-App-60x60@3x.png', // Your app logo path
+                    'assets/images/Adaptifit logo.png', // Your app logo path
                     height: 100, // Adjust size as needed
                   ),
                   const SizedBox(height: 8),

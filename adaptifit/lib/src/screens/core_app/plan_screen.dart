@@ -268,14 +268,30 @@ class PlanScreen extends ConsumerWidget {
                   style: const TextStyle(fontSize: 16, color: Colors.black54)),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.calendar_today_outlined, size: 28),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CalendarScreen()),
-              );
-            },
+          // MODIFICATION: Wrapped IconButton with a styled Container
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.08),
+                  spreadRadius: 1,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.calendar_today_outlined, size: 28),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const CalendarScreen()),
+                );
+              },
+            ),
           ),
         ],
       ),

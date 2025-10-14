@@ -39,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Image.asset(
-              'assets/images/adaptifit_white.jpeg',
+              'assets/images/adaptifit_white.png',
               height: 120,
             ),
             const SizedBox(height: 24),
@@ -55,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Smarter fitness. Better you.',
+              'Train Smarter. Recover Stronger.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white70,

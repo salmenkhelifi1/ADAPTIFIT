@@ -26,7 +26,7 @@ class WelcomeScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Image.asset(
-                      'assets/images/Icon-App-60x60@3x.png', // Your app logo path
+                      'assets/images/Adaptifit logo.png', // Your app logo path
                       // Make the logo width 35% of the screen width
                       width: screenWidth * 0.35,
                     ),

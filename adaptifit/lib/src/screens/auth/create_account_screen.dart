@@ -100,12 +100,28 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Form(
-              key: _formKey,
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  const SizedBox(height: 30),
+                  Image.asset(
+                    'assets/images/Adaptifit logo.png', // Your app logo path
+                    height: 100, // Adjust size as needed
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'ADAPTIFIT',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
                   const Text(
                     'Create Account',
                     textAlign: TextAlign.center,
