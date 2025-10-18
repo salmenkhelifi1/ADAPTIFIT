@@ -1,8 +1,11 @@
 import 'package:adaptifit/src/providers/api_service_provider.dart';
+import 'package:adaptifit/src/providers/plan_provider.dart';
+import 'package:adaptifit/src/providers/calendar_provider.dart';
+import 'package:adaptifit/src/providers/today_plan_provider.dart';
+import 'package:adaptifit/src/providers/weekly_progress_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptifit/src/utils/message_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'workout_overview_screen.dart';
 
 class RewritePlanScreen extends ConsumerStatefulWidget {
   const RewritePlanScreen({super.key});
@@ -21,6 +24,13 @@ class _RewritePlanScreenState extends ConsumerState<RewritePlanScreen> {
 
     try {
       await ref.read(apiServiceProvider).regeneratePlan();
+
+      // Invalidate all relevant providers to refresh data
+      ref.invalidate(plansProvider);
+      ref.invalidate(calendarEntriesProvider);
+      ref.invalidate(todayPlanNotifierProvider);
+      ref.invalidate(weeklyProgressProvider);
+
       if (mounted) {
         showSnackBarMessage(
           context,

@@ -271,6 +271,11 @@ class _OnboardingQuestionScreenState
 
     switch (question.type) {
       case QuestionType.singleChoice:
+        // Handle custom text for "Other (Custom)" option
+        if (answer is String && answer != 'Other (Custom)') {
+          _textController.text = answer;
+        }
+        break;
       case QuestionType.multiChoice:
         break;
       case QuestionType.textInput:
@@ -299,6 +304,10 @@ class _OnboardingQuestionScreenState
 
       switch (currentQuestion.type) {
         case QuestionType.singleChoice:
+          // Special handling for "Other (Custom)" - require custom text
+          if (answer == 'Other (Custom)') {
+            return _textController.text.isNotEmpty;
+          }
           return answer.toString().isNotEmpty;
         case QuestionType.multiChoice:
           return (answer as List).isNotEmpty;
@@ -587,40 +596,67 @@ class _OnboardingQuestionScreenState
     final selectedOption = provider.answers[question.answerKey];
 
     return Column(
-      children: question.options.map((option) {
-        final isSelected = selectedOption == option;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: GestureDetector(
-            onTap: () => _updateProviderAnswer(question.answerKey, option),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primaryGreen.withOpacity(0.1)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
+      children: [
+        ...question.options.map((option) {
+          final isSelected = selectedOption == option;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: GestureDetector(
+              onTap: () => _updateProviderAnswer(question.answerKey, option),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
                   color: isSelected
-                      ? AppColors.primaryGreen
-                      : AppColors.timestampGray,
-                  width: 1.5,
+                      ? AppColors.primaryGreen.withOpacity(0.1)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primaryGreen
+                        : AppColors.timestampGray,
+                    width: 1.5,
+                  ),
                 ),
-              ),
-              child: Text(
-                option,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.darkText,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                child: Text(
+                  option,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.darkText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
+          );
+        }).toList(),
+        // Add custom text input for "Other (Custom)" option
+        if (selectedOption == 'Other (Custom)') ...[
+          const SizedBox(height: 16),
+          TextField(
+            controller: _textController,
+            onChanged: (text) {
+              // Store the custom text as the answer
+              _updateProviderAnswer(question.answerKey, text);
+            },
+            decoration: InputDecoration(
+              hintText: 'Please specify your workout split preference',
+              filled: true,
+              fillColor: AppColors.neutralGray.withOpacity(0.5),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+              ),
+            ),
           ),
-        );
-      }).toList(),
+        ],
+      ],
     );
   }
 

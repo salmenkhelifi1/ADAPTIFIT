@@ -1,5 +1,9 @@
 import 'package:adaptifit/src/providers/api_service_provider.dart';
 import 'package:adaptifit/src/providers/auth_provider.dart'; // Assuming this is your onboarding provider location
+import 'package:adaptifit/src/providers/plan_provider.dart';
+import 'package:adaptifit/src/providers/calendar_provider.dart';
+import 'package:adaptifit/src/providers/today_plan_provider.dart';
+import 'package:adaptifit/src/providers/weekly_progress_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,6 +32,12 @@ class SummaryScreen extends ConsumerWidget {
       final answers = ref.read(onboardingProvider.notifier).answers;
       await ref.read(apiServiceProvider).submitOnboarding(answers);
       await ref.read(apiServiceProvider).regeneratePlan();
+
+      // Invalidate all relevant providers to refresh data after plan regeneration
+      ref.invalidate(plansProvider);
+      ref.invalidate(calendarEntriesProvider);
+      ref.invalidate(todayPlanNotifierProvider);
+      ref.invalidate(weeklyProgressProvider);
 
       if (context.mounted) {
         // Pop the loading dialog
