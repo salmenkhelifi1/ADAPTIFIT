@@ -155,6 +155,12 @@ class SummaryScreen extends ConsumerWidget {
                         valueText = (entry.value as List).join('\n');
                       } else {
                         valueText = entry.value.toString();
+                        // Add units for specific duration fields
+                        if (entry.key == 'planDuration') {
+                          valueText = '$valueText days';
+                        } else if (entry.key == 'timePerSession') {
+                          valueText = '$valueText minutes';
+                        }
                       }
                       if (valueText.isEmpty) return const SizedBox.shrink();
                       // Use our helper to create the row

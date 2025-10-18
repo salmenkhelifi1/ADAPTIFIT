@@ -1,4 +1,4 @@
-import 'package:adaptifit/src/providers/api_service_provider.dart';
+import 'package:adaptifit/src/providers/auth_provider.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
 import 'package:adaptifit/src/constants/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +24,9 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
   bool _obscureConfirmPassword = true;
 
   Future<void> _createAccount() async {
+    if (_formKey.currentState == null) {
+      return;
+    }
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -33,11 +36,10 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
     });
 
     try {
-      await ref.read(apiServiceProvider).register(
-            _firstNameController.text.trim(),
-            _emailController.text.trim(),
-            _passwordController.text.trim(),
-            _confirmPasswordController.text.trim(),
+      await ref.read(authServiceProvider.notifier).signUpWithEmail(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+            firstName: _firstNameController.text.trim(),
           );
 
       if (mounted) {
@@ -132,65 +134,73 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                     ),
                   ),
                   const SizedBox(height: 50),
-                  _buildTextField(
-                    controller: _emailController,
-                    hintText: 'Email',
-                    validator: (value) {
-                      if (value == null ||
-                          value.isEmpty ||
-                          !value.contains('@')) {
-                        return 'Please enter a valid email';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPasswordField(
-                    controller: _passwordController,
-                    hintText: 'Password',
-                    obscureText: _obscurePassword,
-                    onToggleVisibility: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPasswordField(
-                    controller: _confirmPasswordController,
-                    hintText: 'Confirm Password',
-                    obscureText: _obscureConfirmPassword,
-                    onToggleVisibility: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildTextField(
-                    controller: _firstNameController,
-                    hintText: 'First Name',
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your first name';
-                      }
-                      return null;
-                    },
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        _buildTextField(
+                          controller: _emailController,
+                          hintText: 'Email',
+                          validator: (value) {
+                            if (value == null ||
+                                value.isEmpty ||
+                                !value.contains('@')) {
+                              return 'Please enter a valid email';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPasswordField(
+                          controller: _passwordController,
+                          hintText: 'Password',
+                          obscureText: _obscurePassword,
+                          onToggleVisibility: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPasswordField(
+                          controller: _confirmPasswordController,
+                          hintText: 'Confirm Password',
+                          obscureText: _obscureConfirmPassword,
+                          onToggleVisibility: () {
+                            setState(() {
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please confirm your password';
+                            }
+                            if (value != _passwordController.text) {
+                              return 'Passwords do not match';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildTextField(
+                          controller: _firstNameController,
+                          hintText: 'First Name',
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your first name';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 40),
                   ElevatedButton(

@@ -56,8 +56,7 @@ class ProfileScreen extends ConsumerWidget {
       ),
       body: userValue.when(
         data: (user) => SingleChildScrollView(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Column(
             children: [
               _buildProfileHeader(user),
@@ -73,7 +72,8 @@ class ProfileScreen extends ConsumerWidget {
                 text: 'Rewrite Plan',
                 isPrimary: true,
                 onPressed: () {
-                  final onboardingProviderNotifier = ref.read(onboardingProvider.notifier);
+                  final onboardingProviderNotifier =
+                      ref.read(onboardingProvider.notifier);
                   onboardingProviderNotifier.setAnswers(user.onboardingAnswers);
                   Navigator.push(
                       context,
@@ -90,8 +90,7 @@ class ProfileScreen extends ConsumerWidget {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                              const ChangePasswordScreen()));
+                          builder: (context) => const ChangePasswordScreen()));
                 },
               ),
               const SizedBox(height: 16),
@@ -240,7 +239,7 @@ class ProfileScreen extends ConsumerWidget {
             const Text(
               'Track any injuries, modifications, or special adaptations for your workouts',
               textAlign: TextAlign.center,
-              style: 
+              style:
                   TextStyle(color: AppColors.grey, fontSize: 15, height: 1.3),
             ),
           ],
@@ -283,7 +282,7 @@ class ProfileScreen extends ConsumerWidget {
             const Text(
               'Earn badges and maintain streaks as you progress through your fitness journey',
               textAlign: TextAlign.center,
-              style: 
+              style:
                   TextStyle(color: AppColors.grey, fontSize: 15, height: 1.3),
             ),
           ],
@@ -333,7 +332,7 @@ class ProfileScreen extends ConsumerWidget {
             Icon(icon, color: color),
             const SizedBox(width: 12),
             Text(text,
-                style: 
+                style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -357,22 +356,6 @@ class ProfileScreen extends ConsumerWidget {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatColumn(String value, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(value,
-            style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.darkText)),
-        const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(color: AppColors.grey, fontSize: 14)),
-      ],
     );
   }
 

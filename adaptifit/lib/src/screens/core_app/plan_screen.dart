@@ -33,7 +33,6 @@ class PlanScreen extends ConsumerWidget {
         );
       }
     } catch (e) {
-      debugPrint("Error completing workout: $e");
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to complete workout.')),
@@ -55,7 +54,6 @@ class PlanScreen extends ConsumerWidget {
         );
       }
     } catch (e) {
-      debugPrint("Error completing nutrition: $e");
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to complete nutrition.')),
@@ -191,7 +189,6 @@ class PlanScreen extends ConsumerWidget {
       },
       loading: () => _buildWeeklyProgressCard(0, 0, 0, 0),
       error: (error, stackTrace) {
-        // Fallback to regular provider if stream fails
         final fallbackState = ref.watch(weeklyProgressProvider);
         return fallbackState.when(
           data: (weeklyProgress) {

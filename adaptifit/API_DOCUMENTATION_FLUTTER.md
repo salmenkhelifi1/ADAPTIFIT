@@ -35,9 +35,9 @@ Registers a new user and returns a JWT token.
 ```json
 {
   "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123",
-  "confirmPassword": "password123"
+  "email": "test11@example.com",
+  "password": "123456789",
+  "confirmPassword": "123456789"
 }
 ```
 
@@ -78,8 +78,8 @@ Authenticates an existing user and returns a JWT token.
 
 ```json
 {
-  "email": "john@example.com",
-  "password": "password123"
+  "email": "test11@example.com",
+  "password": "123456789"
 }
 ```
 

@@ -187,10 +187,14 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
     // Don't reset state unnecessarily - just fetch data
     final api = ref.read(apiServiceProvider);
     final today = DateTime.now();
+    print(
+        '📅 [Today Plan] Fetching data for today: ${today.toString().split(' ')[0]}');
 
     try {
       // Step 1: Fetch the main calendar entry for today
       final calendarEntry = await api.getCalendarEntry(today);
+      print(
+          '📅 [Today Plan] Calendar entry result: ${calendarEntry != null ? "Found" : "Not found"}');
       state = state.copyWith(entry: AsyncData(calendarEntry));
 
       if (calendarEntry == null) {
@@ -350,13 +354,9 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
   // --- ACTION METHODS (to be called from UI) ---
 
   Future<void> completeTodayWorkout() async {
-    print('🏋️ [Today Plan] Completing today\'s workout...');
     final api = ref.read(apiServiceProvider);
     final todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    print(
-        '🏋️ [Today Plan] API call to complete workout for date: $todayString');
     await api.completeAllWorkout(todayString);
-    print('🏋️ [Today Plan] Workout completion API call successful');
 
     // Optimistically update the workout progress to show all sets completed
     final workout = state.workout.value;
@@ -366,29 +366,22 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
         completedProgress[i] = workout.exercises[i].sets;
       }
       state = state.copyWith(workoutProgress: AsyncData(completedProgress));
-      print('🏋️ [Today Plan] Updated workout progress optimistically');
     }
 
     // Force refresh calendar entries to get latest data
-    print('🏋️ [Today Plan] Force refreshing calendar entries...');
     ref.invalidate(calendarEntriesProvider);
 
     // Wait a moment for the invalidation to take effect
     await Future.delayed(const Duration(milliseconds: 500));
 
     // Also refresh weekly progress directly
-    print('🏋️ [Today Plan] Refreshing weekly progress...');
     ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
   }
 
   Future<void> completeTodayNutrition() async {
-    print('🍽️ [Today Plan] Completing today\'s nutrition...');
     final api = ref.read(apiServiceProvider);
     final todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    print(
-        '🍽️ [Today Plan] API call to complete nutrition for date: $todayString');
     await api.completeAllNutrition(todayString);
-    print('🍽️ [Today Plan] Nutrition completion API call successful');
 
     // Optimistically update the nutrition progress to show all meals completed
     final nutrition = state.nutrition.value;
@@ -398,29 +391,22 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
         completedProgress[mealKey] = true;
       }
       state = state.copyWith(nutritionProgress: AsyncData(completedProgress));
-      print('🍽️ [Today Plan] Updated nutrition progress optimistically');
     }
 
     // Force refresh calendar entries to get latest data
-    print('🍽️ [Today Plan] Force refreshing calendar entries...');
     ref.invalidate(calendarEntriesProvider);
 
     // Wait a moment for the invalidation to take effect
     await Future.delayed(const Duration(milliseconds: 500));
 
     // Also refresh weekly progress directly
-    print('🍽️ [Today Plan] Refreshing weekly progress...');
     ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
   }
 
   Future<void> completeAllExercises() async {
-    print('🏋️ [Today Plan] Completing all exercises...');
     final api = ref.read(apiServiceProvider);
     final todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    print(
-        '🏋️ [Today Plan] API call to complete all exercises for date: $todayString');
     await api.completeAllWorkout(todayString);
-    print('🏋️ [Today Plan] Exercise completion API call successful');
 
     // Optimistically update both exercise progress and set progress to show all completed
     final workout = state.workout.value;
@@ -441,19 +427,15 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
         exerciseProgress: AsyncData(completedExerciseProgress),
         workoutProgress: AsyncData(completedSetProgress),
       );
-      print(
-          '🏋️ [Today Plan] Updated exercise and set progress optimistically');
     }
 
     // Force refresh calendar entries to get latest data
-    print('🏋️ [Today Plan] Force refreshing calendar entries...');
     ref.invalidate(calendarEntriesProvider);
 
     // Wait a moment for the invalidation to take effect
     await Future.delayed(const Duration(milliseconds: 500));
 
     // Also refresh weekly progress directly
-    print('🏋️ [Today Plan] Refreshing weekly progress...');
     ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
   }
 
@@ -484,8 +466,6 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
     final entry = state.entry.value;
     if (nutrition == null || entry == null) return;
 
-    print('🍽️ [Today Plan] Updating meal progress: $mealKey = $isCompleted');
-
     // Optimistic Update: Update the UI instantly
     final currentProgress =
         Map<String, bool>.from(state.nutritionProgress.value ?? {});
@@ -506,17 +486,13 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
       await api.updateCalendarEntry(entry.date,
           {'completedMeals': allCompletedMeals, 'completed': isDayCompleted});
 
-      print('🍽️ [Today Plan] Meal progress updated successfully');
-
       // Force refresh calendar entries to get latest data
-      print('🍽️ [Today Plan] Force refreshing calendar entries...');
       ref.invalidate(calendarEntriesProvider);
 
       // Wait a moment for the invalidation to take effect
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Also refresh weekly progress directly
-      print('🍽️ [Today Plan] Refreshing weekly progress...');
       ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
     } catch (e) {
       debugPrint("Failed to update meal progress: $e");
@@ -531,9 +507,6 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
     final workout = state.workout.value;
     final entry = state.entry.value;
     if (workout == null || entry == null) return;
-
-    print(
-        '🏋️ [Today Plan] Updating exercise progress: $exerciseIndex = $isCompleted');
 
     // Optimistic Update: Update the UI instantly
     final currentProgress =
@@ -557,17 +530,13 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
         'workoutCompleted': isWorkoutCompleted
       });
 
-      print('🏋️ [Today Plan] Exercise progress updated successfully');
-
       // Force refresh calendar entries to get latest data
-      print('🏋️ [Today Plan] Force refreshing calendar entries...');
       ref.invalidate(calendarEntriesProvider);
 
       // Wait a moment for the invalidation to take effect
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Also refresh weekly progress directly
-      print('🏋️ [Today Plan] Refreshing weekly progress...');
       ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
     } catch (e) {
       debugPrint("Failed to update exercise progress: $e");
@@ -577,7 +546,6 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
   }
 
   Future<void> markWorkoutIncomplete() async {
-    print('🏋️ [Today Plan] Marking workout as incomplete...');
     final api = ref.read(apiServiceProvider);
     final todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
@@ -585,25 +553,22 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
       // Call API to mark workout as incomplete
       await api.completeAllWorkout(
           todayString); // This should handle incomplete status
-      print('🏋️ [Today Plan] Workout marked as incomplete successfully');
 
       // Force refresh calendar entries to get latest data
-      print('🏋️ [Today Plan] Force refreshing calendar entries...');
       ref.invalidate(calendarEntriesProvider);
 
       // Wait a moment for the invalidation to take effect
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Also refresh weekly progress directly
-      print('🏋️ [Today Plan] Refreshing weekly progress...');
       ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
     } catch (e) {
-      print('❌ [Today Plan] Error marking workout as incomplete: $e');
+      // Handle error silently or rethrow if needed
+      rethrow;
     }
   }
 
   Future<void> markNutritionIncomplete() async {
-    print('🍽️ [Today Plan] Marking nutrition as incomplete...');
     final api = ref.read(apiServiceProvider);
     final todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
@@ -611,20 +576,18 @@ class TodayPlanNotifier extends _$TodayPlanNotifier {
       // Call API to mark nutrition as incomplete
       await api.completeAllNutrition(
           todayString); // This should handle incomplete status
-      print('🍽️ [Today Plan] Nutrition marked as incomplete successfully');
 
       // Force refresh calendar entries to get latest data
-      print('🍽️ [Today Plan] Force refreshing calendar entries...');
       ref.invalidate(calendarEntriesProvider);
 
       // Wait a moment for the invalidation to take effect
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Also refresh weekly progress directly
-      print('🍽️ [Today Plan] Refreshing weekly progress...');
       ref.read(weeklyProgressProvider.notifier).calculateWeeklyProgress();
     } catch (e) {
-      print('❌ [Today Plan] Error marking nutrition as incomplete: $e');
+      // Handle error silently or rethrow if needed
+      rethrow;
     }
   }
 }

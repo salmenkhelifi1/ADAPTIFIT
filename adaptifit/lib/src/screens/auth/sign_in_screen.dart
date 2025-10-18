@@ -1,5 +1,5 @@
 import 'package:adaptifit/src/constants/app_colors.dart';
-import 'package:adaptifit/src/providers/api_service_provider.dart';
+import 'package:adaptifit/src/providers/auth_provider.dart';
 import 'package:adaptifit/src/screens/auth/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,9 +32,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     });
 
     try {
-      await ref.read(apiServiceProvider).login(
-            _emailController.text.trim(),
-            _passwordController.text.trim(),
+      await ref.read(authServiceProvider.notifier).signInWithEmail(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
           );
 
       if (!mounted) return;

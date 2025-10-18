@@ -16,7 +16,12 @@ class ApiService {
   final http.Client _client = http.Client();
 
   Future<String?> _getToken() async {
-    return await _secureStorage.read(key: 'jwt_token');
+    try {
+      final token = await _secureStorage.read(key: 'jwt_token');
+      return token;
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<Map<String, String>> _getHeaders() async {
@@ -34,6 +39,8 @@ class ApiService {
   // Part 1: Authentication
   Future<String> register(String name, String email, String password,
       String confirmPassword) async {
+    print('🔄 [ApiService] Registering user: $email');
+    print('🔄 [ApiService] API URL: $_baseUrl/api/auth/register');
     final response = await _client.post(
       Uri.parse('$_baseUrl/api/auth/register'),
       headers: {
@@ -50,6 +57,9 @@ class ApiService {
         'confirmPassword': confirmPassword
       }),
     );
+    print(
+        '🔄 [ApiService] Registration response status: ${response.statusCode}');
+    print('🔄 [ApiService] Registration response body: ${response.body}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final responseBody = jsonDecode(response.body);
@@ -123,9 +133,10 @@ class ApiService {
 
   // Part 2: User Data
   Future<User> getMyProfile() async {
+    final headers = await _getHeaders();
     final response = await _client.get(
       Uri.parse('$_baseUrl/api/users/me'),
-      headers: await _getHeaders(),
+      headers: headers,
     );
 
     if (response.statusCode == 200) {
@@ -232,22 +243,31 @@ class ApiService {
   Future<CalendarEntry?> getCalendarEntry(DateTime date) async {
     final dateString =
         '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    print('📅 [ApiService] Getting calendar entry for date: $dateString');
     final response = await _client.get(
       Uri.parse('$_baseUrl/api/calendar/$dateString'),
       headers: await _getHeaders(),
     );
 
+    print(
+        '📅 [ApiService] Calendar entry response status: ${response.statusCode}');
     if (response.statusCode == 200) {
-      if (response.body.isEmpty) return null;
+      if (response.body.isEmpty) {
+        print('📅 [ApiService] Calendar entry response body is empty');
+        return null;
+      }
       final dynamic responseBody = jsonDecode(response.body);
       if (responseBody is Map<String, dynamic> &&
           responseBody.containsKey('data')) {
+        print('📅 [ApiService] Calendar entry found with data key');
         return CalendarEntry.fromJson(responseBody['data']);
       } else {
         // If the response is not in the expected format, maybe it's the entry itself
+        print('📅 [ApiService] Calendar entry found without data key');
         return CalendarEntry.fromJson(responseBody);
       }
     } else if (response.statusCode == 404) {
+      print('📅 [ApiService] Calendar entry not found (404)');
       return null;
     } else {
       throw Exception('Failed to load calendar entry: ${response.body}');

@@ -1,8 +1,6 @@
-
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../models/nutrition.dart';
-import '../services/api_service.dart';
 import 'api_service_provider.dart';
 
 part 'nutrition_provider.g.dart';

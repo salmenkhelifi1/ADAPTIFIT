@@ -1,25 +1,25 @@
 import 'package:adaptifit/src/models/chat_message.dart';
-import 'package:adaptifit/src/screens/core_app/plan_screen.dart';
 import 'package:adaptifit/src/services/chat_api_service.dart';
 import 'package:adaptifit/src/services/chat_cache_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:adaptifit/src/constants/app_colors.dart';
 
-class CoachScreen extends StatefulWidget {
+class CoachScreen extends ConsumerStatefulWidget {
   const CoachScreen({super.key});
 
   @override
-  State<CoachScreen> createState() => _CoachScreenState();
+  ConsumerState<CoachScreen> createState() => _CoachScreenState();
 }
 
-class _CoachScreenState extends State<CoachScreen> {
+class _CoachScreenState extends ConsumerState<CoachScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatCacheService _chatCache = ChatCacheService();
-  late final ChatApiService _chatApiService;
+  ChatApiService? _chatApiService;
 
   // Represents loading a new message from the AI, not the initial history
   bool _isAiTyping = false;
@@ -28,6 +28,13 @@ class _CoachScreenState extends State<CoachScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeChat();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Simple approach - just initialize chat once
     _initializeChat();
   }
 
@@ -51,16 +58,13 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   Future<void> _initializeChat() async {
+    if (_chatApiService != null) return; // Already initialized
+
     const secureStorage = FlutterSecureStorage();
     final token = await secureStorage.read(key: 'jwt_token');
     if (token != null) {
       _chatApiService = ChatApiService(token);
-      // Only load history if it hasn't been fetched before.
-      if (!_chatCache.hasMessages) {
-        await _loadHistory();
-      }
-    } else {
-      // Handle not logged in
+      await _loadHistory();
     }
   }
 
@@ -69,7 +73,9 @@ class _CoachScreenState extends State<CoachScreen> {
       _isAiTyping = true; // Show loading indicator while fetching history
     });
     try {
-      await _chatCache.loadHistory(_chatApiService);
+      if (_chatApiService != null) {
+        await _chatCache.loadHistory(_chatApiService!);
+      }
     } catch (e) {
       // Handle error
     } finally {
@@ -102,8 +108,10 @@ class _CoachScreenState extends State<CoachScreen> {
     _textController.clear();
 
     try {
-      final aiMessage = await _chatApiService.sendMessage(text);
-      _chatCache.addAiMessage(aiMessage);
+      if (_chatApiService != null) {
+        final aiMessage = await _chatApiService!.sendMessage(text);
+        _chatCache.addAiMessage(aiMessage);
+      }
     } catch (e) {
       // Handle error
     } finally {

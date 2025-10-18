@@ -156,8 +156,35 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) =>
-            Center(child: Text("Error: $error")),
+        error: (error, stackTrace) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.subtitleGray,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Unable to load calendar",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkText,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "Please check your connection and try again",
+                style: TextStyle(
+                  color: AppColors.subtitleGray,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

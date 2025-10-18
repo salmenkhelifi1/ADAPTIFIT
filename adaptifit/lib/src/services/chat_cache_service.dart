@@ -41,4 +41,9 @@ class ChatCacheService {
   void addAiMessage(ChatMessage message) {
     _messages.insert(0, message);
   }
+
+  void clearCache() {
+    _messages.clear();
+    _hasFetchedHistory = false;
+  }
 }
